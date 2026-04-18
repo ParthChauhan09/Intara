@@ -2,7 +2,7 @@ import type { Request, Response } from "express";
 import { createSupabaseUserClient } from "../supabase.ts";
 import { Category, Priority, isComplaintCategory, isComplaintPriority, isComplaintStatus, type ComplaintStatus, type ComplaintCategory, type ComplaintPriority } from "../models/Complaint.ts";
 import type { ErrorWithCause } from "../types/types.ts";
-
+import { ComplaintAIService } from "../services/ai/ComplaintAIService.ts";
 type CreateComplaintBody = {
   description?: string;
   category?: ComplaintCategory;
@@ -69,8 +69,32 @@ export class ComplaintController {
     const { description, category, priority, slaDeadline } = req.body || {};
     if (!description) return res.status(400).json({ error: "description is required" });
 
-    const finalCategory = isComplaintCategory(category) ? category : Category.Product;
-    const finalPriority = isComplaintPriority(priority) ? priority : Priority.Medium;
+    let finalCategory = isComplaintCategory(category) ? category : Category.Product;
+    let finalPriority = isComplaintPriority(priority) ? priority : Priority.Medium;
+    let recommendation: string[] | null = null;
+
+    try {
+      const aiResult = await ComplaintAIService.process(
+        description,
+        Object.values(Category),
+        Object.values(Priority),
+        { geminiApiKey: process.env.GEMINI_API_KEY }
+      );
+      
+      if (aiResult.status === 'Success' || aiResult.status === 'Needs Review') {
+        if (!category && aiResult.category && isComplaintCategory(aiResult.category)) {
+          finalCategory = aiResult.category;
+        }
+        if (!priority && aiResult.priority && isComplaintPriority(aiResult.priority)) {
+          finalPriority = aiResult.priority;
+        }
+        if (aiResult.recommended_actions && aiResult.recommended_actions.length > 0) {
+          recommendation = aiResult.recommended_actions;
+        }
+      }
+    } catch (err) {
+      console.error("AI service error:", err);
+    }
 
     try {
       const supabase = createSupabaseUserClient(req.accessToken);
@@ -81,6 +105,7 @@ export class ComplaintController {
           description,
           category: finalCategory,
           priority: finalPriority,
+          recommendation,
           sla_deadline: slaDeadline ?? null
         })
         .select(complaintSelect)
