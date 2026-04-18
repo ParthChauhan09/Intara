@@ -1,10 +1,15 @@
-export type UserRole = string;
+export enum Role {
+  CUSTOMER = "customer",
+  ADMIN = "admin"
+}
+
+export type UserRole = Role;
 
 export type AppUser = {
   id: string;
   name: string;
   email: string;
-  role: UserRole;
+  role: Role;
 };
 
 export function isAppUser(value: unknown): value is AppUser {

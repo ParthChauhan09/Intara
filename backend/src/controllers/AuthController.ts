@@ -1,6 +1,7 @@
 import type { Request, Response } from "express";
 import { createSupabaseAdminClient, createSupabaseAnonClient } from "../supabase.ts";
 import type { AuthBody, ErrorWithCause } from "../types/types.ts";
+import { Role } from "../models/User.ts";
 
 export class AuthController {
   private constructor() {}
@@ -33,10 +34,11 @@ export class AuthController {
 
     try {
       const supabase = createSupabaseAnonClient();
+      const finalRole = role && Object.values(Role).includes(role as Role) ? role : Role.CUSTOMER;
       const userMeta: Record<string, unknown> = {
         ...(data || {}),
         name,
-        ...(role ? { role } : {})
+        role: finalRole
       };
       const { data: result, error } = await supabase.auth.signUp({
         email,
