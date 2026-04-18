@@ -1,6 +1,7 @@
 import { makeAutoObservable, runInAction } from "mobx";
-import { apiJson } from "@/lib/apiClient";
+import { apiJson, ApiError } from "@/lib/apiClient";
 import { apiEndPointMap } from "@/lib/apiEndPointMap";
+import { AuthStorage } from "@/lib/authStorage";
 
 export type ComplaintStatus = "OPEN" | "PENDING" | "REVIEWED" | "ESCALATED" | "CLOSED";
 
@@ -52,6 +53,12 @@ export class ComplaintsManager {
       runInAction(() => {
         this.error = err instanceof Error ? err.message : "Failed to fetch complaints";
       });
+      if (err instanceof ApiError && err.status === 401) {
+        AuthStorage.clearAccessToken();
+        if (typeof window !== "undefined") {
+          window.location.href = "/sign-in";
+        }
+      }
       throw err;
     } finally {
       runInAction(() => {
@@ -86,6 +93,12 @@ export class ComplaintsManager {
       runInAction(() => {
         this.error = err instanceof Error ? err.message : "Failed to create complaint";
       });
+      if (err instanceof ApiError && err.status === 401) {
+        AuthStorage.clearAccessToken();
+        if (typeof window !== "undefined") {
+          window.location.href = "/sign-in";
+        }
+      }
       throw err;
     } finally {
       runInAction(() => {
@@ -125,6 +138,12 @@ export class ComplaintsManager {
       runInAction(() => {
         this.error = err instanceof Error ? err.message : "Failed to update complaint";
       });
+      if (err instanceof ApiError && err.status === 401) {
+        AuthStorage.clearAccessToken();
+        if (typeof window !== "undefined") {
+          window.location.href = "/sign-in";
+        }
+      }
       throw err;
     } finally {
       runInAction(() => {
