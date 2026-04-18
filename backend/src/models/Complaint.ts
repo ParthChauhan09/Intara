@@ -1,8 +1,41 @@
-export type ComplaintCategory = string;
+export const Category = {
+  Product: "Product",
+  Packaging: "Packaging",
+  Trade: "Trade",
+  Invalid: "Invalid",
+} as const;
 
-export type ComplaintPriority = string;
+export const Priority = {
+  High: "High",
+  Medium: "Medium",
+  Low: "Low",
+} as const;
 
-export type ComplaintStatus = "OPEN" | "PENDING" | "REVIEWED" | "ESCALATED" | "CLOSED";
+export const Status = {
+  OPEN: "OPEN",
+  PENDING: "PENDING",
+  REVIEWED: "REVIEWED",
+  ESCALATED: "ESCALATED",
+  CLOSED: "CLOSED",
+} as const;
+
+export type ComplaintCategory = (typeof Category)[keyof typeof Category];
+
+export type ComplaintPriority = (typeof Priority)[keyof typeof Priority];
+
+export type ComplaintStatus = (typeof Status)[keyof typeof Status];
+
+export function isComplaintCategory(value: unknown): value is ComplaintCategory {
+  return (Object.values(Category) as string[]).includes(value as string);
+}
+
+export function isComplaintPriority(value: unknown): value is ComplaintPriority {
+  return (Object.values(Priority) as string[]).includes(value as string);
+}
+
+export function isComplaintStatus(value: unknown): value is ComplaintStatus {
+  return (Object.values(Status) as string[]).includes(value as string);
+}
 
 export type AppComplaint = {
   id: string;
@@ -15,16 +48,6 @@ export type AppComplaint = {
   slaDeadline: string | null;
   createdAt: string;
 };
-
-export function isComplaintStatus(value: unknown): value is ComplaintStatus {
-  return (
-    value === "OPEN" ||
-    value === "PENDING" ||
-    value === "REVIEWED" ||
-    value === "ESCALATED" ||
-    value === "CLOSED"
-  );
-}
 
 export function isAppComplaint(value: unknown): value is AppComplaint {
   if (!value || typeof value !== "object") return false;
@@ -42,4 +65,3 @@ export function isAppComplaint(value: unknown): value is AppComplaint {
     typeof record.createdAt === "string"
   );
 }
-

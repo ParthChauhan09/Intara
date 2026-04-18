@@ -1,12 +1,12 @@
 import type { Request, Response } from "express";
 import { createSupabaseUserClient } from "../supabase.ts";
-import { isComplaintStatus, type ComplaintStatus } from "../models/Complaint.ts";
+import { Category, Priority, isComplaintCategory, isComplaintPriority, isComplaintStatus, type ComplaintStatus, type ComplaintCategory, type ComplaintPriority } from "../models/Complaint.ts";
 import type { ErrorWithCause } from "../types/types.ts";
 
 type CreateComplaintBody = {
   description?: string;
-  category?: string;
-  priority?: string;
+  category?: ComplaintCategory;
+  priority?: ComplaintPriority;
   slaDeadline?: string | null;
 };
 
@@ -68,8 +68,9 @@ export class ComplaintController {
 
     const { description, category, priority, slaDeadline } = req.body || {};
     if (!description) return res.status(400).json({ error: "description is required" });
-    if (!category) return res.status(400).json({ error: "category is required" });
-    if (!priority) return res.status(400).json({ error: "priority is required" });
+
+    const finalCategory = isComplaintCategory(category) ? category : Category.Product;
+    const finalPriority = isComplaintPriority(priority) ? priority : Priority.Medium;
 
     try {
       const supabase = createSupabaseUserClient(req.accessToken);
@@ -78,8 +79,8 @@ export class ComplaintController {
         .insert({
           user_id: req.user.id,
           description,
-          category,
-          priority,
+          category: finalCategory,
+          priority: finalPriority,
           sla_deadline: slaDeadline ?? null
         })
         .select(complaintSelect)
