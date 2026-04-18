@@ -27,15 +27,21 @@ export class AuthController {
   }
 
   static async signUp(req: Request<{}, {}, AuthBody>, res: Response) {
-    const { email, password, data } = req.body || {};
+    const { email, password, name, role, data } = req.body || {};
     if (!email || !password) return res.status(400).json({ error: "email and password are required" });
+    if (!name) return res.status(400).json({ error: "name is required" });
 
     try {
       const supabase = createSupabaseAnonClient();
+      const userMeta: Record<string, unknown> = {
+        ...(data || {}),
+        name,
+        ...(role ? { role } : {})
+      };
       const { data: result, error } = await supabase.auth.signUp({
         email,
         password,
-        options: data ? { data } : undefined
+        options: { data: userMeta }
       });
       if (error) return res.status(400).json({ error: error.message });
       return res.status(201).json({ user: result.user, session: result.session });

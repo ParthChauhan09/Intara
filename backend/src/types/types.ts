@@ -1,6 +1,8 @@
 export type AuthBody = {
   email?: string;
   password?: string;
+  name?: string;
+  role?: string;
   data?: Record<string, unknown>;
 };
 
