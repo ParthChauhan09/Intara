@@ -6,6 +6,7 @@
   "scripts": {
     "start": "node dist/server.js",
     "dev": "tsx watch src/server.ts",
+    "prebuild": "npm install",
     "build": "tsup src/server.ts --format esm --clean",
     "typecheck": "tsc --noEmit"
   },
