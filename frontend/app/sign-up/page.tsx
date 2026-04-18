@@ -1,6 +1,61 @@
-import Link from "next/link";
+"use client";
 
-export default function SignUpPage() {
+import Link from "next/link";
+import { useRouter } from "next/navigation";
+import { useState, type FormEvent } from "react";
+import { useMainContext } from "@/lib/state/MainContext";
+import { observer } from "mobx-react-lite";
+import { FullPageLoader } from "@/components/FullPageLoader";
+import { useGuestOnlyRoute } from "@/lib/useGuestOnlyRoute";
+
+function SignUpPage() {
+  const router = useRouter();
+  const { auth } = useMainContext();
+  const { isReady, isAllowed } = useGuestOnlyRoute("/");
+  const [name, setName] = useState("");
+  const [email, setEmail] = useState("");
+  const [password, setPassword] = useState("");
+  const [confirmPassword, setConfirmPassword] = useState("");
+  const [acceptedTerms, setAcceptedTerms] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const [isSubmitting, setIsSubmitting] = useState(false);
+
+  if (!isReady) {
+    return <FullPageLoader label="Loading..." />;
+  }
+
+  if (!isAllowed) {
+    return <FullPageLoader label="Redirecting..." />;
+  }
+
+  const handleSubmit = async (event: FormEvent<HTMLFormElement>) => {
+    event.preventDefault();
+    setError(null);
+
+    if (password !== confirmPassword) {
+      setError("Passwords do not match.");
+      return;
+    }
+
+    if (!acceptedTerms) {
+      setError("Please accept the terms to continue.");
+      return;
+    }
+
+    setIsSubmitting(true);
+
+    try {
+      await auth.signUp(name, email, password);
+
+      router.push("/sign-in");
+      router.refresh();
+    } catch (err: unknown) {
+      setError(err instanceof Error ? err.message : "Sign-up failed");
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
+
   return (
     <main className="h-dvh overflow-hidden px-4 py-6 sm:px-6 lg:px-8">
       <div className="mx-auto grid h-[calc(100dvh-3rem)] w-full max-w-6xl overflow-hidden rounded-[2rem] border border-slate-200 bg-white shadow-[0_30px_80px_-40px_rgba(15,23,42,0.35)] lg:grid-cols-2">
@@ -30,7 +85,10 @@ export default function SignUpPage() {
               </p>
             </div>
 
-            <form className="mt-5 space-y-4 sm:mt-6 sm:space-y-5">
+            <form
+              className="mt-5 space-y-4 sm:mt-6 sm:space-y-5"
+              onSubmit={handleSubmit}
+            >
               <div className="space-y-1.5">
                 <label
                   htmlFor="name"
@@ -41,8 +99,11 @@ export default function SignUpPage() {
                 <input
                   id="name"
                   type="text"
+                  value={name}
+                  onChange={(event) => setName(event.target.value)}
                   placeholder="Jane Doe"
                   className="flex h-10 w-full rounded-full border border-slate-200 bg-slate-50 px-4 py-2 text-sm text-slate-950 outline-none ring-offset-white placeholder:text-slate-400 focus:border-slate-300 focus:bg-white focus:ring-2 focus:ring-slate-900/10"
+                  required
                 />
               </div>
 
@@ -56,8 +117,11 @@ export default function SignUpPage() {
                 <input
                   id="email"
                   type="email"
+                  value={email}
+                  onChange={(event) => setEmail(event.target.value)}
                   placeholder="name@example.com"
                   className="flex h-10 w-full rounded-full border border-slate-200 bg-slate-50 px-4 py-2 text-sm text-slate-950 outline-none ring-offset-white placeholder:text-slate-400 focus:border-slate-300 focus:bg-white focus:ring-2 focus:ring-slate-900/10"
+                  required
                 />
               </div>
 
@@ -71,8 +135,11 @@ export default function SignUpPage() {
                 <input
                   id="password"
                   type="password"
+                  value={password}
+                  onChange={(event) => setPassword(event.target.value)}
                   placeholder="••••••••"
                   className="flex h-10 w-full rounded-full border border-slate-200 bg-slate-50 px-4 py-2 text-sm text-slate-950 outline-none ring-offset-white placeholder:text-slate-400 focus:border-slate-300 focus:bg-white focus:ring-2 focus:ring-slate-900/10"
+                  required
                 />
               </div>
 
@@ -86,8 +153,11 @@ export default function SignUpPage() {
                 <input
                   id="confirm-password"
                   type="password"
+                  value={confirmPassword}
+                  onChange={(event) => setConfirmPassword(event.target.value)}
                   placeholder="••••••••"
                   className="flex h-10 w-full rounded-full border border-slate-200 bg-slate-50 px-4 py-2 text-sm text-slate-950 outline-none ring-offset-white placeholder:text-slate-400 focus:border-slate-300 focus:bg-white focus:ring-2 focus:ring-slate-900/10"
+                  required
                 />
               </div>
 
@@ -95,6 +165,8 @@ export default function SignUpPage() {
                 <input
                   id="terms"
                   type="checkbox"
+                  checked={acceptedTerms}
+                  onChange={(event) => setAcceptedTerms(event.target.checked)}
                   className="mt-1 h-4 w-4 rounded border-slate-300 text-slate-950 focus:ring-slate-900/10"
                 />
                 <label htmlFor="terms" className="leading-6">
@@ -104,11 +176,18 @@ export default function SignUpPage() {
 
               <button
                 type="submit"
-                className="inline-flex h-10 w-full items-center justify-center rounded-full bg-slate-950 px-4 py-2 text-sm font-medium text-white transition hover:bg-slate-800"
+                disabled={isSubmitting}
+                className="inline-flex h-10 w-full items-center justify-center rounded-full bg-slate-950 px-4 py-2 text-sm font-medium text-white transition hover:bg-slate-800 disabled:cursor-not-allowed disabled:opacity-70"
               >
-                Create account
+                {isSubmitting ? "Creating..." : "Create account"}
               </button>
             </form>
+
+            {error ? (
+              <p className="mt-4 rounded-2xl border border-rose-200 bg-rose-50 px-4 py-3 text-sm text-rose-700">
+                {error}
+              </p>
+            ) : null}
 
             <p className="mt-4 text-center text-sm text-slate-500 sm:mt-5">
               Already have an account?{" "}
@@ -122,3 +201,5 @@ export default function SignUpPage() {
     </main>
   );
 }
+
+export default observer(SignUpPage);

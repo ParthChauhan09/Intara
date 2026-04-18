@@ -2,6 +2,7 @@
 
 import { createContext, useContext, ReactNode } from "react";
 import { StateManager, stateManager } from "./StateManager";
+import { useInitApi } from "@/lib/useInitApi";
 
 const MainContext = createContext<StateManager | null>(null);
 
@@ -10,6 +11,8 @@ interface MainContextProviderProps {
 }
 
 export function MainContextProvider({ children }: MainContextProviderProps) {
+  useInitApi();
+
   return (
     <MainContext.Provider value={stateManager}>
       {children}

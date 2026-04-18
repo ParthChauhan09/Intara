@@ -2,17 +2,24 @@
 
 import Link from "next/link";
 import { useState, type FormEvent } from "react";
+import { useProtectedRoute } from "@/lib/useProtectedRoute";
+import { observer } from "mobx-react-lite";
+import { FullPageLoader } from "@/components/FullPageLoader";
 
-export default function Home() {
+function Home() {
   const [complaintId, setComplaintId] = useState<string | null>(null);
   const [email, setEmail] = useState("");
   const [complaint, setComplaint] = useState("");
+
+  const { isReady, isAllowed } = useProtectedRoute("/sign-up");
+  if (!isReady) return <FullPageLoader label="Checking session..." />;
+  if (!isAllowed) return <FullPageLoader label="Redirecting..." />;
 
   const handleSubmit = (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
 
     const generatedId = `CMP-${Date.now().toString(36).toUpperCase()}-${Math.floor(
-      Math.random() * 9000 + 1000
+      Math.random() * 9000 + 1000,
     )}`;
 
     setComplaintId(generatedId);
@@ -28,8 +35,8 @@ export default function Home() {
             Intara Support
           </p>
           <blockquote className="mx-auto mt-6 max-w-3xl text-3xl font-semibold tracking-tight text-slate-950 sm:text-4xl lg:text-5xl">
-            {"\""}One clear place to raise a complaint, share context, and get routed
-            to the right team.{"\""}
+            {'"'}One clear place to raise a complaint, share context, and get
+            routed to the right team.{'"'}
           </blockquote>
           <p className="mx-auto mt-5 max-w-2xl text-base leading-7 text-slate-600">
             Keep the front end simple for now. The backend can classify,
@@ -133,3 +140,5 @@ export default function Home() {
     </main>
   );
 }
+
+export default observer(Home);
