@@ -4,12 +4,12 @@ import fs from "node:fs";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 import cors from "cors";
-import { authRouter } from "./src/routes/auth.js";
+import { authRouter } from "./routes/auth.ts";
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
-function loadEnv() {
+function loadEnv(): string | null {
   const dotenvConfigPath = process.env.DOTENV_CONFIG_PATH;
   const explicitPath = dotenvConfigPath
     ? path.isAbsolute(dotenvConfigPath)
@@ -19,18 +19,20 @@ function loadEnv() {
 
   const nodeEnv = process.env.NODE_ENV;
   const isDevLike = !nodeEnv || nodeEnv === "development" || nodeEnv === "dev";
+  const projectRoot = process.cwd();
 
   const candidates = [
     explicitPath,
+    nodeEnv ? path.join(projectRoot, `.env.${nodeEnv}`) : null,
+    isDevLike ? path.join(projectRoot, ".env.development") : null,
+    path.join(projectRoot, ".env"),
     nodeEnv ? path.join(__dirname, `.env.${nodeEnv}`) : null,
     isDevLike ? path.join(__dirname, ".env.development") : null,
     path.join(__dirname, ".env")
-  ].filter(Boolean);
+  ].filter((value): value is string => Boolean(value));
 
   for (const candidate of candidates) {
     if (fs.existsSync(candidate)) {
-      // Ensure the selected env file wins even if the variable is already set
-      // (e.g. leftover shell/system env vars or other loaders).
       dotenv.config({ path: candidate, override: true });
       if (process.env.DEBUG_ENV) {
         console.log(`[env] loaded: ${candidate}`);
@@ -54,7 +56,7 @@ app.use(express.json());
 
 const corsOrigins = (process.env.CORS_ORIGIN || "")
   .split(",")
-  .map((s) => s.trim())
+  .map((value) => value.trim())
   .filter(Boolean);
 
 app.use(

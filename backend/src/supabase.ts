@@ -1,16 +1,16 @@
 import { createClient } from "@supabase/supabase-js";
 
-function requireEnv(name) {
+function requireEnv(name: string): string {
   const value = process.env[name];
   if (!value) throw new Error(`Missing required env var: ${name}`);
   return value;
 }
 
-function normalizeSupabaseUrl(raw) {
+function normalizeSupabaseUrl(raw: string): string {
   const trimmed = String(raw).trim();
   const withoutTrailingSlash = trimmed.replace(/\/+$/, "");
 
-  let url;
+  let url: URL;
   try {
     url = new URL(withoutTrailingSlash);
   } catch {

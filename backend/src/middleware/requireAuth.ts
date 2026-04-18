@@ -1,13 +1,14 @@
-import { createSupabaseAnonClient } from "../supabase.js";
+import type { Request, Response, NextFunction } from "express";
+import { createSupabaseAnonClient } from "../supabase.ts";
 
-function getBearerToken(req) {
+function getBearerToken(req: Request): string | null {
   const header = req.headers.authorization || "";
   const [scheme, token] = header.split(" ");
   if (scheme !== "Bearer" || !token) return null;
   return token;
 }
 
-export async function requireAuth(req, res, next) {
+export async function requireAuth(req: Request, res: Response, next: NextFunction) {
   const token = getBearerToken(req);
   if (!token) return res.status(401).json({ error: "Missing Bearer token" });
 
@@ -18,8 +19,8 @@ export async function requireAuth(req, res, next) {
     req.user = data.user;
     req.accessToken = token;
     return next();
-  } catch (err) {
-    return res.status(500).json({ error: err?.message || "Auth failure" });
+  } catch (err: unknown) {
+    const message = err instanceof Error ? err.message : "Auth failure";
+    return res.status(500).json({ error: message });
   }
 }
-
