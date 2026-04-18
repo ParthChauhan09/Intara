@@ -1,10 +1,14 @@
 import type { Metadata } from "next";
 import "./globals.css";
 import { MainContextProvider } from "@/lib/state/MainContext";
+import { Geist } from "next/font/google";
+import { cn } from "@/lib/utils";
+
+const geist = Geist({subsets:['latin'],variable:'--font-sans'});
 
 export const metadata: Metadata = {
-  title: "TarkSastra",
-  description: "Frontend for TarkSastra.",
+  title: "Intara",
+  description: "Frontend for Intara.",
 };
 
 export default function RootLayout({
@@ -13,8 +17,15 @@ export default function RootLayout({
   children: React.ReactNode;
 }>) {
   return (
-    <html lang="en" className="h-full antialiased">
-      <body className="min-h-full bg-slate-950 text-white">
+    <html
+      lang="en"
+      className={cn("h-full antialiased", "font-sans", geist.variable)}
+      suppressHydrationWarning
+    >
+      <body
+        className="min-h-full bg-[var(--background)] text-[var(--foreground)]"
+        suppressHydrationWarning
+      >
         <MainContextProvider>{children}</MainContextProvider>
       </body>
     </html>
