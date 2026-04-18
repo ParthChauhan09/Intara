@@ -38,6 +38,23 @@ export function createSupabaseAnonClient() {
   });
 }
 
+export function createSupabaseUserClient(accessToken: string) {
+  const supabaseUrl = normalizeSupabaseUrl(requireEnv("SUPABASE_URL"));
+  const supabaseAnonKey = requireEnv("SUPABASE_ANON_KEY");
+
+  return createClient(supabaseUrl, supabaseAnonKey, {
+    auth: {
+      persistSession: false,
+      autoRefreshToken: false
+    },
+    global: {
+      headers: {
+        Authorization: `Bearer ${accessToken}`
+      }
+    }
+  });
+}
+
 export function createSupabaseAdminClient() {
   const supabaseUrl = normalizeSupabaseUrl(requireEnv("SUPABASE_URL"));
   const serviceRoleKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
