@@ -13,7 +13,7 @@ type CreateComplaintBody = {
 type UpdateComplaintStatusBody = {
   id?: string;
   status?: ComplaintStatus;
-  recommendation?: string | null;
+  recommendation?: string[];
   slaDeadline?: string | null;
 };
 

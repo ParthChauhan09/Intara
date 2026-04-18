@@ -4,7 +4,7 @@ create table if not exists public.complaints (
   description text not null check (char_length(description) > 0),
   category text not null check (char_length(category) > 0),
   priority text not null check (char_length(priority) > 0),
-  recommendation text,
+  recommendation text[],
   status text not null default 'OPEN' check (status in ('OPEN', 'PENDING', 'REVIEWED', 'ESCALATED', 'CLOSED')),
   sla_deadline timestamptz,
   created_at timestamptz not null default now()

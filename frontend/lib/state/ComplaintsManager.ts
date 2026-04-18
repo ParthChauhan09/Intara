@@ -10,7 +10,7 @@ export type Complaint = {
   description: string;
   category: string;
   priority: string;
-  recommendation: string | null;
+  recommendation: string[];
   status: ComplaintStatus;
   slaDeadline: string | null;
   createdAt: string;
