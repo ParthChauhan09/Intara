@@ -23,7 +23,7 @@ export default function RootLayout({
       suppressHydrationWarning
     >
       <body
-        className="min-h-full bg-[var(--background)] text-[var(--foreground)]"
+        className="min-h-full"
         suppressHydrationWarning
       >
         <MainContextProvider>{children}</MainContextProvider>
