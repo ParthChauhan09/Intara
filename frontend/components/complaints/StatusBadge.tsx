@@ -9,7 +9,7 @@ interface StatusBadgeProps {
 
 import { BadgeVariant } from "@/components/ui/Badge";
 
-const statusVariantMap: Record<ComplaintStatus, BadgeVariant> = {
+export const statusVariantMap: Record<ComplaintStatus, BadgeVariant> = {
   OPEN: "status-open",
   PENDING: "status-pending",
   REVIEWED: "status-reviewed",

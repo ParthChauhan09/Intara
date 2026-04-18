@@ -23,7 +23,16 @@ function SignInPage() {
 
   const handleSubmit = async (email: string, password: string) => {
     await auth.signIn(email, password);
-    router.push("/");
+    
+    const user: any = auth.user;
+    const role = user?.user_metadata?.role;
+    
+    if (role === "admin") {
+      router.push("/admin");
+    } else {
+      router.push("/");
+    }
+    
     router.refresh();
   };
 
