@@ -28,11 +28,19 @@ function Home() {
     return await complaints.createComplaint(auth.accessToken, { description });
   };
 
+  const handleCreateAudioComplaint = async (file: File) => {
+    if (!auth.accessToken) {
+      throw new Error("You must be signed in to submit an audio complaint.");
+    }
+    return await complaints.createComplaintFromAudio(auth.accessToken, file);
+  };
+
   return (
     <PageContainer>
       <HeroSection />
       <ComplaintForm
         onSubmit={handleCreateComplaint}
+        onSubmitAudio={handleCreateAudioComplaint}
         isSubmitting={complaints.isCreating}
       />
       <ComplaintList complaints={complaints.complaints} />

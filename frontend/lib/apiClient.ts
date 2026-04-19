@@ -53,3 +53,32 @@ export async function apiJson<T>(path: string, options: ApiJsonOptions = {}): Pr
   return payload as T;
 }
 
+export async function apiFormData<T>(path: string, options: { body: FormData; accessToken?: string | null }): Promise<T> {
+  const { body, accessToken } = options;
+
+  const response = await fetch(getApiUrl(path), {
+    method: "POST",
+    headers: {
+      ...(accessToken ? { Authorization: `Bearer ${accessToken}` } : {})
+    },
+    body
+  });
+
+  const contentType = response.headers.get("content-type") || "";
+  const isJson = contentType.includes("application/json");
+  const payload: unknown = isJson ? await response.json().catch(() => null) : await response.text();
+
+  if (!response.ok) {
+    const apiPayload = (typeof payload === "object" && payload !== null ? payload : undefined) as
+      | ApiErrorPayload
+      | undefined;
+    const message =
+      apiPayload?.error ||
+      (typeof payload === "string" && payload.trim().length ? payload : response.statusText) ||
+      "Request failed";
+    throw new ApiError(message, response.status, apiPayload);
+  }
+
+  return payload as T;
+}
+

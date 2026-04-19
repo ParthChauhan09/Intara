@@ -1,5 +1,5 @@
 import { makeAutoObservable, runInAction } from "mobx";
-import { apiJson, ApiError } from "@/lib/apiClient";
+import { apiJson, apiFormData, ApiError } from "@/lib/apiClient";
 import { apiEndPointMap } from "@/lib/apiEndPointMap";
 import { AuthStorage } from "@/lib/authStorage";
 
@@ -92,6 +92,45 @@ export class ComplaintsManager {
     } catch (err: unknown) {
       runInAction(() => {
         this.error = err instanceof Error ? err.message : "Failed to create complaint";
+      });
+      if (err instanceof ApiError && err.status === 401) {
+        AuthStorage.clearAccessToken();
+        if (typeof window !== "undefined") {
+          window.location.href = "/sign-in";
+        }
+      }
+      throw err;
+    } finally {
+      runInAction(() => {
+        this.isCreating = false;
+      });
+    }
+  }
+
+  async createComplaintFromAudio(
+    accessToken: string,
+    file: File
+  ): Promise<Complaint> {
+    this.isCreating = true;
+    this.error = null;
+
+    try {
+      const formData = new FormData();
+      formData.append("audio", file);
+
+      const result = await apiFormData<ComplaintResponse>(apiEndPointMap.complaints.createAudio, {
+        accessToken,
+        body: formData
+      });
+
+      runInAction(() => {
+        this.complaints.unshift(result.complaint);
+      });
+
+      return result.complaint;
+    } catch (err: unknown) {
+      runInAction(() => {
+        this.error = err instanceof Error ? err.message : "Failed to create complaint from audio";
       });
       if (err instanceof ApiError && err.status === 401) {
         AuthStorage.clearAccessToken();

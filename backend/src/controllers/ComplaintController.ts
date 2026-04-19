@@ -3,6 +3,9 @@ import { createSupabaseUserClient } from "../supabase.ts";
 import { Category, Priority, isComplaintCategory, isComplaintPriority, isComplaintStatus, type ComplaintStatus, type ComplaintCategory, type ComplaintPriority } from "../models/Complaint.ts";
 import type { ErrorWithCause } from "../types/types.ts";
 import { ComplaintAIService } from "../services/ai/ComplaintAIService.ts";
+import fs from "node:fs";
+import path from "node:path";
+import { transcribeAudio } from "../services/audio/transcriber.ts";
 type CreateComplaintBody = {
   description?: string;
   category?: ComplaintCategory;
@@ -117,6 +120,72 @@ export class ComplaintController {
         error: ComplaintController.getErrorMessage(err, "Failed to create complaint"),
         details: ComplaintController.getErrorDetails(err)
       });
+    }
+  }
+
+  static async createFromAudio(req: Request, res: Response) {
+    if (!req.user || !req.accessToken) return res.status(401).json({ error: "Missing authenticated user" });
+
+    const file = req.file;
+    if (!file) return res.status(400).json({ error: "No audio file uploaded." });
+
+    const ext = path.extname(file.originalname).toLowerCase() || '.mp3';
+    const renamedPath = `${file.path}${ext}`;
+    fs.renameSync(file.path, renamedPath);
+
+    try {
+      const transcript = await transcribeAudio(renamedPath);
+      
+      let finalCategory: ComplaintCategory = Category.Product;
+      let finalPriority: ComplaintPriority = Priority.Medium;
+      let recommendation: string[] | null = null;
+
+      try {
+        const aiResult = await ComplaintAIService.process(
+          transcript,
+          Object.values(Category),
+          Object.values(Priority),
+          { geminiApiKey: process.env.GEMINI_API_KEY }
+        );
+        
+        if (aiResult.status === 'Success' || aiResult.status === 'Needs Review') {
+          if (aiResult.category && isComplaintCategory(aiResult.category)) {
+            finalCategory = aiResult.category;
+          }
+          if (aiResult.priority && isComplaintPriority(aiResult.priority)) {
+            finalPriority = aiResult.priority;
+          }
+          if (aiResult.recommended_actions && aiResult.recommended_actions.length > 0) {
+            recommendation = aiResult.recommended_actions;
+          }
+        }
+      } catch (err) {
+        console.error("AI service error:", err);
+      }
+
+      const supabase = createSupabaseUserClient(req.accessToken);
+      const { data, error } = await supabase
+        .from("complaints")
+        .insert({
+          user_id: req.user.id,
+          description: transcript,
+          category: finalCategory,
+          priority: finalPriority,
+          recommendation,
+          sla_deadline: null
+        })
+        .select(complaintSelect)
+        .single();
+      
+      if (error) return res.status(400).json({ error: error.message });
+      return res.status(201).json({ complaint: data, transcript });
+    } catch (err: unknown) {
+      return res.status(502).json({
+        error: ComplaintController.getErrorMessage(err, "Failed to process audio complaint"),
+        details: ComplaintController.getErrorDetails(err)
+      });
+    } finally {
+      if (fs.existsSync(renamedPath)) fs.unlinkSync(renamedPath);
     }
   }
 
