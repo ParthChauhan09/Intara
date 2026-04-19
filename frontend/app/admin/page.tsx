@@ -99,7 +99,7 @@ function AdminDashboard() {
           ))}
         </Pie>
         <Tooltip
-          formatter={(value: number, name: string) => [`${value}`, name]}
+          formatter={(value) => [`${value}`, '']}
           contentStyle={{ borderRadius: '1rem', border: 'none', boxShadow: '0 20px 50px -30px rgba(15,23,42,0.35)' }}
         />
         <Legend
