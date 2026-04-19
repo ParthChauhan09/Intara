@@ -2,9 +2,7 @@
  * ComplaintAIService.ts
  * Singleton orchestrator — domain-agnostic processing pipeline.
  *
- * All domain values (urgency signals, recommended actions, categories,
- * priorities, thresholds) come from constants.ts or ServiceConfig.
- * This class contains only orchestration and ensemble logic.
+ * Pipeline: Groq (primary LLM) → Gemini (fallback LLM) → keyword/ML ensemble
  *
  * Public API:
  *   ComplaintAIService.process(text, categories, priorities, config?)
@@ -12,6 +10,7 @@
 
 import { MLClassifier }      from './services/MLClassifier.js';
 import { GeminiService }     from './services/GeminiService.js';
+import { GroqService }       from './services/GroqService.js';
 import { KeywordClassifier } from './services/KeywordClassifier.js';
 import { clamp, phraseMatch, normalizeToCategory } from './utils/Utility.js';
 import {
@@ -28,46 +27,46 @@ export class ComplaintAIService {
   private static instance: ComplaintAIService | null = null;
 
   private readonly ml:      MLClassifier;
+  private readonly groq:    GroqService;
   private readonly gemini:  GeminiService;
   private readonly keyword: KeywordClassifier;
-  private readonly enableLogs: boolean;
 
-  // Injected or default domain config
   private readonly urgencySignals:      Array<[string, number]>;
   private readonly recommendedActions:  Record<string, Record<string, string>>;
   private readonly lowPriorityCategory: string;
 
-  // Stateful: pattern detection counts per session
   private readonly categoryCounts = new Map<string, number>();
 
   private constructor(config: ServiceConfig = {}) {
-    this.enableLogs          = config.enableLogs ?? true;
     this.urgencySignals      = config.urgencySignals      ?? URGENCY_SIGNALS;
     this.recommendedActions  = config.recommendedActions  ?? RECOMMENDED_ACTIONS;
     this.lowPriorityCategory = config.lowPriorityCategory ?? LOW_PRIORITY_CATEGORY;
 
-    const log = this.log.bind(this);
-    this.ml      = new MLClassifier(log);
-    this.keyword = new KeywordClassifier(log);
+    this.ml      = new MLClassifier();
+    this.keyword = new KeywordClassifier();
+    this.groq    = new GroqService({
+      apiKey:    config.groqApiKey,
+      model:     config.groqModel,
+      baseUrl:   config.groqApiBaseUrl,
+      timeoutMs: config.requestTimeoutMs,
+      fetchImpl: config.fetchImpl,
+    });
     this.gemini  = new GeminiService({
       apiKey:    config.geminiApiKey,
       model:     config.geminiModel,
       baseUrl:   config.geminiApiBaseUrl,
       timeoutMs: config.requestTimeoutMs,
       fetchImpl: config.fetchImpl,
-    }, log);
+    });
   }
 
-  // ── Static entry point ────────────────────────────────────────────────────────
   static async process(
     text:       string,
     categories: string[] = [...DEFAULT_CATEGORIES],
     priorities: string[] = [...DEFAULT_PRIORITIES],
     config?:    ServiceConfig,
   ): Promise<ComplaintOutput> {
-    // Re-create the instance if a new geminiApiKey is explicitly provided
-    // so the key is never stale from a previous singleton construction.
-    if (!ComplaintAIService.instance || config?.geminiApiKey) {
+    if (!ComplaintAIService.instance || config?.groqApiKey || config?.geminiApiKey) {
       ComplaintAIService.instance = new ComplaintAIService(config ?? {});
     }
     return ComplaintAIService.instance.run(text, categories, priorities);
@@ -77,57 +76,51 @@ export class ComplaintAIService {
     ComplaintAIService.instance = null;
   }
 
-  // ── Pipeline ──────────────────────────────────────────────────────────────────
   private async run(
     inputText:  string,
     categories: string[],
     priorities: string[],
   ): Promise<ComplaintOutput> {
-    this.log('process.start', { preview: inputText?.slice(0, 80) });
-
     // Layer 1: Validation
     const validation = this.validateInput(inputText);
     if (!validation.valid) {
-      this.log('process.rejected', { reason: validation.reason });
       return { status: 'Rejected', reason: validation.reason };
     }
     const text = validation.cleanedText;
 
-    // Layers 2+3+4: Parallel — ML, Keyword, Gemini
-    const [mlResult, keywordResult, geminiResult] = await Promise.all([
+    // Layers 2+3+4: Parallel — ML, Keyword, Groq (primary LLM)
+    const [mlResult, keywordResult, groqResult] = await Promise.all([
       Promise.resolve(this.ml.classify(text)),
       Promise.resolve(this.keyword.classify(text)),
-      this.gemini.classify(text, categories, priorities),
+      this.groq.classify(text, categories, priorities),
     ]);
-    this.log('process.parallel', {
-      ml:     mlResult     ? { cat: mlResult.category,     conf: mlResult.confidence }     : null,
-      kw:     keywordResult ? { cat: keywordResult.category, conf: keywordResult.confidence } : null,
-      gemini: { cat: geminiResult.category, pri: geminiResult.priority, conf: geminiResult.confidence, spam: geminiResult.spam, source: geminiResult.source },
-    });
 
-    // Layer 4.5: Gemini is compulsory — if it fell back, block classification
-    if (geminiResult.source === 'fallback') {
-      this.log('process.gemini_unavailable', { reason: 'Gemini fallback — cannot classify without primary judge' });
+    // Layer 4.5: Groq failed → try Gemini
+    let llmResult = groqResult;
+    if (groqResult.source === 'fallback') {
+      llmResult = await this.gemini.classify(text, categories, priorities);
+    }
+
+    // Layer 4.6: Both LLMs failed
+    if (llmResult.source === 'fallback') {
       return { status: 'Needs Review', reason: 'Classification service temporarily unavailable. Please try again.', pattern_alert: null, escalation: 'Manual review required' };
     }
 
     // Layer 5: Spam gate
-    if (geminiResult.spam) {
+    if (llmResult.spam) {
       return { status: 'Needs Review', reason: 'Spam or meaningless input detected', pattern_alert: null, escalation: 'Manual review required' };
     }
     if (keywordResult.category === 'Unknown'
         && (mlResult?.confidence ?? 0) < THRESHOLDS.SPAM_ML_CONFIDENCE
-        && geminiResult.confidence < THRESHOLDS.SPAM_GEMINI_CONFIDENCE) {
+        && llmResult.confidence < THRESHOLDS.SPAM_GEMINI_CONFIDENCE) {
       return { status: 'Needs Review', reason: 'Unable to classify — all layers low confidence', pattern_alert: null, escalation: 'Manual review required' };
     }
 
     // Layer 6: Ensemble category
-    const { category, confidence, categoryReasoning } = this.ensembleCategory(mlResult, keywordResult, geminiResult, categories, text);
-    this.log('process.category', { category, confidence });
+    const { category, confidence, categoryReasoning } = this.ensembleCategory(mlResult, keywordResult, llmResult, categories, text);
 
     // Layer 7: Ensemble priority
-    const { priority, urgencyScore, priorityReasoning } = this.ensemblePriority(text, category, geminiResult, priorities);
-    this.log('process.priority', { priority, urgencyScore });
+    const { priority, urgencyScore, priorityReasoning } = this.ensemblePriority(text, category, llmResult, priorities);
 
     // Layer 8: SLA risk
     const slaRisk = this.calcSlaRisk(urgencyScore);
@@ -138,25 +131,23 @@ export class ComplaintAIService {
     // Layer 10: Escalation
     const escalation = this.decideEscalation(priority, urgencyScore, priorities);
 
-    // Layer 11: Recommended action — Gemini's specific action, fallback to lookup
-    const recommendedActions = geminiResult.recommended_actions && geminiResult.recommended_actions.length > 0
-      ? geminiResult.recommended_actions
+    // Layer 11: Recommended actions
+    const recommendedActions = llmResult.recommended_actions?.length > 0
+      ? llmResult.recommended_actions
       : [(this.recommendedActions[category]?.[priority] ?? `Route ${category} ${priority} complaint to support.`)];
 
-    const result: ComplaintOutput = {
-      status:             'Success',
+    return {
+      status:              'Success',
       category,
       priority,
-      urgency_score:      urgencyScore,
-      sla_risk:           slaRisk,
+      urgency_score:       urgencyScore,
+      sla_risk:            slaRisk,
       recommended_actions: recommendedActions,
-      reasoning:          [categoryReasoning, priorityReasoning].filter(Boolean).join(' | '),
+      reasoning:           [categoryReasoning, priorityReasoning].filter(Boolean).join(' | '),
       confidence,
-      pattern_alert:      patternAlert,
+      pattern_alert:       patternAlert,
       escalation,
     };
-    this.log('process.success', result);
-    return result;
   }
 
   // ─── Layer 1: Validation ──────────────────────────────────────────────────────
@@ -172,8 +163,6 @@ export class ComplaintAIService {
     if (words.length === 0) return { valid: false, reason: 'Invalid or spam input' };
     if (words.length === 1 && words[0].length <= 4) return { valid: false, reason: 'Input too short or meaningless' };
 
-    // Detect repeated-character spam: e.g. "happpyyyyyyy", "heyyyy", "soooome"
-    // A word is spammy if any single character makes up > 50% of it
     const hasRepeatedCharSpam = words.some(w => {
       if (w.length < 4) return false;
       const charCounts: Record<string, number> = {};
@@ -182,7 +171,6 @@ export class ComplaintAIService {
     });
     if (hasRepeatedCharSpam) return { valid: false, reason: 'Invalid or spam input' };
 
-    // Reject single generic words with no complaint context
     const meaninglessWords = new Set([
       'hello', 'hey', 'hi', 'test', 'testing', 'okay', 'ok', 'yes', 'no',
       'some', 'thing', 'stuff', 'blah', 'lol', 'haha', 'hmm', 'umm', 'ugh',
@@ -192,8 +180,7 @@ export class ComplaintAIService {
       return { valid: false, reason: 'Input too short or meaningless' };
     }
 
-    // Only reject gibberish if ALL long words have no vowels (not just one)
-    const longWords = words.filter(w => w.length >= 5);
+    const longWords  = words.filter(w => w.length >= 5);
     const allGibberish = longWords.length > 0 && longWords.every(w => !/[aeiou]/.test(w));
     const joined     = words.join('');
     const vowelRatio = (joined.match(/[aeiou]/g) ?? []).length / joined.length;
@@ -214,7 +201,6 @@ export class ComplaintAIService {
     const votes: Record<string, number> = {};
     categories.forEach(c => { votes[c] = 0; });
 
-    // ML vote
     if (ml) {
       const mlCat = normalizeToCategory(ml.category, categories);
       for (const [cls, prob] of Object.entries(ml.probabilities)) {
@@ -224,8 +210,7 @@ export class ComplaintAIService {
       parts.push(`ML(${mlCat} ${(ml.confidence * 100).toFixed(0)}%)`);
     }
 
-    // Gemini vote — adaptive weight when it strongly disagrees with ML
-    if (ai.source === 'gemini') {
+    if (ai.source !== 'fallback') {
       const aiCat    = normalizeToCategory(ai.category, categories);
       const mlCat    = ml ? normalizeToCategory(ml.category, categories) : null;
       const disagree = mlCat && mlCat !== aiCat && ai.confidence >= THRESHOLDS.GEMINI_OVERRIDE_CONFIDENCE;
@@ -243,38 +228,51 @@ export class ComplaintAIService {
       const others = Object.keys(votes).filter(c => c !== aiCat);
       const rem    = (1 - ai.confidence) * gw / Math.max(others.length, 1);
       others.forEach(c => { votes[c] = (votes[c] ?? 0) + rem; });
-      parts.push(`Gemini(${aiCat} ${(ai.confidence * 100).toFixed(0)}% w=${gw})`);
+      parts.push(`LLM(${ai.source}:${aiCat} ${(ai.confidence * 100).toFixed(0)}%)`);
     } else {
       const aiCat = normalizeToCategory(ai.category, categories);
       votes[aiCat] = (votes[aiCat] ?? 0) + ai.confidence * WEIGHTS.FALLBACK_GEMINI;
-      parts.push(`Gemini(fallback ${aiCat})`);
     }
 
-    // Keyword vote
     if (keyword.category !== 'Unknown') {
       const kwCat = normalizeToCategory(keyword.category, categories);
       votes[kwCat] = (votes[kwCat] ?? 0) + keyword.confidence * WEIGHTS.KEYWORD;
-      parts.push(`Keyword(${kwCat} "${keyword.topKeyword}")`);
+      parts.push(`Keyword(${kwCat})`);
     }
 
-    // Health/safety override: Product wins ONLY when health signals are present
-    // AND there are no dominant Packaging-specific signals (seal/tamper/leak/box)
     const lowerText = inputText?.toLowerCase() ?? '';
     const healthSignals = ['side effect', 'adverse reaction', 'allergic reaction', 'nausea',
       'vomiting', 'food poisoning', 'foreign particles', 'foreign particle', 'breathing',
-      'unwell', 'feeling unwell', 'reaction', 'symptoms', 'contaminated', 'unsafe'];
+      'unwell', 'feeling unwell', 'reaction', 'symptoms', 'contaminated', 'unsafe',
+      'injured', 'injury', 'hurt', 'pain', 'accident', 'negligence', 'harmed',
+      'physical harm', 'got hurt', 'got injured', 'worsened', 'aggravated',
+      'trainer', 'instructor', 'coach', 'exercise', 'workout', 'medical condition',
+      'physical therapy', 'physiotherapy', "didn't guide", 'improper guidance', 'not guided'];
     const packagingSpecific = ['tampered', 'seal', 'leaking', 'leaked', 'box was broken',
       'carton', 'pouch', 'packaging damaged', 'damaged packaging'];
     const hasHealthSignal    = healthSignals.some(s => lowerText.includes(s));
     const hasPackagingSignal = packagingSpecific.some(s => lowerText.includes(s));
 
-    // Only override to Product if health signal present AND no strong packaging context
     if (hasHealthSignal && !hasPackagingSignal && categories.includes('Product')) {
       const productVotes = votes['Product'] ?? 0;
       const maxOther = Math.max(...Object.entries(votes).filter(([k]) => k !== 'Product').map(([, v]) => v));
       if (maxOther > productVotes) {
         votes['Product'] = maxOther + 0.15;
-        parts.push('Health/safety signal → Product override.');
+      }
+    }
+
+    const invalidSignals = ['injured', 'injury', 'hurt', 'pain', 'accident', 'negligence',
+      'harmed', 'worsened', 'aggravated', 'trainer', 'instructor', 'coach',
+      'medical condition', 'side effect', 'adverse reaction', 'allergic', 'nausea',
+      'vomiting', 'contaminated', 'food poisoning', 'breathing', 'exercise', 'workout',
+      'physical therapy', 'physiotherapy', "didn't guide", 'not guided'];
+    const hasInvalidBlocker = invalidSignals.some(s => lowerText.includes(s));
+    if (hasInvalidBlocker && categories.includes('Product')) {
+      const invalidVotes = votes['Invalid'] ?? 0;
+      const productVotes = votes['Product'] ?? 0;
+      if (invalidVotes >= productVotes) {
+        votes['Product'] = invalidVotes + 0.20;
+        votes['Invalid'] = 0;
       }
     }
 
@@ -289,11 +287,14 @@ export class ComplaintAIService {
     const twoAgree = (mlCat === winCat && aiCat === winCat) || (mlCat === winCat && kwCat === winCat) || (aiCat === winCat && kwCat === winCat);
 
     let finalConf = baseConf;
-    if (allAgree)      { finalConf = clamp(baseConf + THRESHOLDS.AGREEMENT_BOOST_ALL); parts.push('→ All 3 agree ✓✓✓'); }
-    else if (twoAgree) { finalConf = clamp(baseConf + THRESHOLDS.AGREEMENT_BOOST_TWO); parts.push('→ 2/3 agree ✓✓'); }
-    else               { parts.push(`→ Disagreement: ML=${mlCat ?? 'n/a'} Gemini=${aiCat} Keyword=${kwCat ?? 'n/a'}`); }
+    if (allAgree)      finalConf = clamp(baseConf + THRESHOLDS.AGREEMENT_BOOST_ALL);
+    else if (twoAgree) finalConf = clamp(baseConf + THRESHOLDS.AGREEMENT_BOOST_TWO);
 
-    return { category: winCat, confidence: finalConf, categoryReasoning: `Category: ${parts.join(' | ')}. Winner=${winCat}(${(finalConf * 100).toFixed(0)}%).` };
+    return {
+      category:          winCat,
+      confidence:        finalConf,
+      categoryReasoning: `${parts.join(' | ')} → ${winCat}(${(finalConf * 100).toFixed(0)}%)`,
+    };
   }
 
   // ─── Layer 7: Ensemble priority ───────────────────────────────────────────────
@@ -303,57 +304,48 @@ export class ComplaintAIService {
     ai:         GeminiResult,
     priorities: string[],
   ): { priority: string; urgencyScore: number; priorityReasoning: string } {
-    const lower          = text.toLowerCase();
-    const parts: string[] = [];
-    let maxSignalScore   = 0;
-    const matchedSignals: string[] = [];
+    const lower = text.toLowerCase();
+    let maxSignalScore = 0;
 
     for (const [phrase, score] of this.urgencySignals) {
-      if (phraseMatch(lower, phrase)) {
-        matchedSignals.push(`"${phrase}"(${score.toFixed(2)})`);
-        if (score > maxSignalScore) maxSignalScore = score;
-      }
+      if (phraseMatch(lower, phrase) && score > maxSignalScore) maxSignalScore = score;
     }
 
     const categoryBase  = this.keyword.getCategoryBaseWeight(text, category);
-    const geminiUrgency = clamp(ai.urgency_score ?? 0.4);
+    const llmUrgency    = clamp(ai.urgency_score ?? 0.4);
     const highPriority  = priorities[0];
     const lowPriority   = priorities[priorities.length - 1];
 
-    // Hard rule: low-priority category + no urgency signals → always lowest priority
     if (category === this.lowPriorityCategory && maxSignalScore === 0) {
-      const urgencyScore = clamp(geminiUrgency * 0.30 + categoryBase * 0.15);
-      parts.push(`${category} inquiry, no urgency signals → ${lowPriority}. Urgency=${urgencyScore.toFixed(3)}.`);
-      return { priority: lowPriority, urgencyScore, priorityReasoning: `Priority: ${parts.join(' ')}` };
+      const urgencyScore = clamp(llmUrgency * 0.30 + categoryBase * 0.15);
+      return { priority: lowPriority, urgencyScore, priorityReasoning: `${category} inquiry → ${lowPriority}` };
     }
 
-    const urgencyScore = clamp(geminiUrgency * 0.60 + maxSignalScore * 0.30 + categoryBase * 0.10);
-    // Gemini is compulsory — its priority is always the base truth
+    const urgencyScore = clamp(llmUrgency * 0.60 + maxSignalScore * 0.30 + categoryBase * 0.10);
     let priority = ai.priority;
 
-    // Critical signal override → highest priority
     if (maxSignalScore >= THRESHOLDS.CRITICAL_SIGNAL_OVERRIDE && priority !== highPriority) {
       priority = highPriority;
-      parts.push(`OVERRIDE→${highPriority}: critical signal (${matchedSignals[0]}).`);
     }
-    // Urgency score upgrade
     if (urgencyScore >= THRESHOLDS.PRIORITY_UPGRADE_URGENCY && priority !== highPriority && category !== this.lowPriorityCategory) {
       priority = highPriority;
-      parts.push(`UPGRADE→${highPriority}: urgency=${urgencyScore.toFixed(2)} ≥ ${THRESHOLDS.PRIORITY_UPGRADE_URGENCY}.`);
     }
-    // Direct High priority triggers for product/packaging failures
+
     const highTriggers = ['stopped working', 'malfunctioning', 'carton crushed', 'bottle cracked',
-      'changed color', 'smells bad', 'expired', 'escalate'];
-    const hasHighTrigger = highTriggers.some(t => phraseMatch(lower, t));
-    if (hasHighTrigger && category !== this.lowPriorityCategory && priority !== highPriority) {
+      'changed color', 'smells bad', 'expired', 'escalate',
+      'injured', 'injury', 'hurt', 'pain', 'accident', 'negligence', 'harmed',
+      'worsened', 'aggravated', 'trainer', 'instructor', 'coach',
+      'medical condition', "didn't guide", 'not guided', 'improper guidance',
+      'physical therapy', 'physiotherapy', 'exercise', 'workout'];
+    if (highTriggers.some(t => phraseMatch(lower, t)) && category !== this.lowPriorityCategory && priority !== highPriority) {
       priority = highPriority;
-      parts.push(`UPGRADE→${highPriority}: high-trigger keyword detected.`);
     }
 
-    if (matchedSignals.length > 0) parts.push(`Signals: ${matchedSignals.slice(0, 3).join(', ')}.`);
-    parts.push(`Gemini=${ai.priority}(u=${geminiUrgency.toFixed(2)}) kw=${maxSignalScore.toFixed(2)} base=${categoryBase.toFixed(2)} → urgency=${urgencyScore.toFixed(3)}, priority=${priority}.`);
-
-    return { priority, urgencyScore, priorityReasoning: `Priority: ${parts.join(' ')}` };
+    return {
+      priority,
+      urgencyScore,
+      priorityReasoning: `LLM=${ai.priority} urgency=${urgencyScore.toFixed(2)} → ${priority}`,
+    };
   }
 
   // ─── Layer 8: SLA risk ────────────────────────────────────────────────────────
@@ -379,14 +371,6 @@ export class ComplaintAIService {
     if (priority === high)   return 'Escalate to senior agent';
     if (priority === medium) return 'Assign to support agent';
     return 'Standard workflow';
-  }
-
-  // ─── Logger ───────────────────────────────────────────────────────────────────
-  private log(event: string, payload?: unknown): void {
-    if (!this.enableLogs) return;
-    payload !== undefined
-      ? console.log(`[ComplaintAIService] ${event}`, payload)
-      : console.log(`[ComplaintAIService] ${event}`);
   }
 }
 

@@ -10,32 +10,17 @@ import type { MLResult } from '../types.js';
 
 export class MLClassifier {
   private readonly classifier: TFIDFClassifier | null;
-  private readonly log: (e: string, p?: unknown) => void;
 
-  constructor(log: (e: string, p?: unknown) => void) {
-    this.log = log;
+  constructor() {
     try {
       this.classifier = new TFIDFClassifier();
-      this.log('MLClassifier.loaded', { status: 'ok' });
-    } catch (e) {
+    } catch {
       this.classifier = null;
-      this.log('MLClassifier.loadFailed', { reason: e instanceof Error ? e.message : String(e) });
     }
   }
 
-  /**
-   * Runs TF-IDF vectorization (word n-grams 1-3 + char n-grams 3-5),
-   * logistic regression decision function, and softmax to produce
-   * per-class probabilities.
-   */
   classify(text: string): MLResult | null {
     if (!this.classifier) return null;
-    const result = this.classifier.predict(text);
-    this.log('MLClassifier.classify', {
-      category: result.category,
-      confidence: result.confidence,
-      probabilities: result.probabilities,
-    });
-    return result;
+    return this.classifier.predict(text);
   }
 }

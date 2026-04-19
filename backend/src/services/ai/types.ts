@@ -24,7 +24,7 @@ export interface GeminiResult {
   confidence:         number;
   spam:               boolean;
   recommended_actions: string[];
-  source:             'gemini' | 'fallback';
+  source:             'gemini' | 'groq' | 'fallback';
 }
 
 export interface ComplaintOutput {
@@ -45,13 +45,12 @@ export interface ServiceConfig {
   geminiApiKey?:        string;
   geminiModel?:         string;
   geminiApiBaseUrl?:    string;
+  groqApiKey?:          string;
+  groqModel?:           string;
+  groqApiBaseUrl?:      string;
   requestTimeoutMs?:    number;
-  enableLogs?:          boolean;
   fetchImpl?:           typeof fetch;
-  /** Override default urgency signals for a different domain */
   urgencySignals?:      Array<[string, number]>;
-  /** Override default recommended actions for a different domain */
   recommendedActions?:  Record<string, Record<string, string>>;
-  /** Category that gets lowest priority when no urgency signals present */
   lowPriorityCategory?: string;
 }

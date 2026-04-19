@@ -9,13 +9,6 @@ import { phraseMatch, clamp } from '../utils/Utility.js';
 import { DATASET_TRAINED_LOOKUP, KEYWORD_CATEGORY_MAP, DEFAULT_CATEGORY_BASE_WEIGHTS } from '../constants.js';
 
 export class KeywordClassifier {
-  private readonly log: (e: string, p?: unknown) => void;
-
-  constructor(log: (e: string, p?: unknown) => void) {
-    this.log = log;
-  }
-
-  /** Weighted keyword scoring across all categories. Returns best match. */
   classify(text: string): KeywordResult {
     const lower  = text.toLowerCase();
     const scores: Record<string, number> = {};
@@ -30,19 +23,13 @@ export class KeywordClassifier {
     }
 
     const total = Object.values(scores).reduce((a, b) => a + b, 0);
-    if (total === 0) {
-      this.log('KeywordClassifier.classify', { category: 'Unknown' });
-      return { category: 'Unknown', confidence: 0, topKeyword: null };
-    }
+    if (total === 0) return { category: 'Unknown', confidence: 0, topKeyword: null };
 
     const [bestCat, bestScore] = Object.entries(scores).sort((a, b) => b[1] - a[1])[0];
     const confidence = clamp(bestScore / total);
-    const result: KeywordResult = { category: bestCat, confidence, topKeyword };
-    this.log('KeywordClassifier.classify', result);
-    return result;
+    return { category: bestCat, confidence, topKeyword };
   }
 
-  /** Returns the base severity weight for a category given the complaint text. */
   getCategoryBaseWeight(text: string, category: string): number {
     const lower = text.toLowerCase();
     for (const [phrase, cat, weight] of DATASET_TRAINED_LOOKUP) {

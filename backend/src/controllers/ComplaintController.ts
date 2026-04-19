@@ -85,7 +85,7 @@ export class ComplaintController {
         description,
         Object.values(Category),
         Object.values(Priority),
-        { geminiApiKey: process.env.GEMINI_API_KEY }
+        { groqApiKey: process.env.GROQ_API_KEY, geminiApiKey: process.env.GEMINI_API_KEY }
       );
       
       if (aiResult.status === 'Success' || aiResult.status === 'Needs Review') {
@@ -152,7 +152,7 @@ export class ComplaintController {
           transcript,
           Object.values(Category),
           Object.values(Priority),
-          { geminiApiKey: process.env.GEMINI_API_KEY }
+          { groqApiKey: process.env.GROQ_API_KEY, geminiApiKey: process.env.GEMINI_API_KEY }
         );
         
         if (aiResult.status === 'Success' || aiResult.status === 'Needs Review') {

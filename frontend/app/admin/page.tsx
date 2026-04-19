@@ -12,6 +12,8 @@ import { PieChart, Pie, Cell, Tooltip, Legend, BarChart, Bar, XAxis, YAxis, Cart
 import { ComplaintList } from "@/components/complaints/ComplaintList";
 import type { Complaint } from "@/lib/state/ComplaintsManager";
 import { exportToCsv, exportToPdf } from "@/lib/exportComplaints";
+import { AlertBar } from "@/components/admin/AlertBar";
+import { detectRecurringIssues } from "@/lib/detectRecurringIssues";
 
 type StatItem = { name: string; value: number };
 
@@ -102,6 +104,11 @@ function AdminDashboard() {
     });
   }, [stats, categoryFilter, priorityFilter]);
 
+  const recurringIssues = useMemo(
+    () => (stats ? detectRecurringIssues(stats.complaints) : []),
+    [stats]
+  );
+
   const handleUpdateStatus = (id: string, status: string) => {
     if (!auth.accessToken || !stats) return;
 
@@ -180,6 +187,8 @@ function AdminDashboard() {
 
         {stats && !error && (
           <>
+            <AlertBar issues={recurringIssues} />
+
             <div className="grid grid-cols-1 lg:grid-cols-4 gap-6 xl:gap-8">
               <Card className="lg:col-span-1">
                 <CardHeader>
