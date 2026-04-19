@@ -112,7 +112,7 @@ function AdminDashboard() {
   );
 
   return (
-    <PageContainer maxWidth="full">
+    <PageContainer maxWidth="full" showLogout>
       <div className="max-w-[1400px] mx-auto w-full mb-auto mt-2 sm:mt-6 px-4 pb-16">
         <div className="mb-10 text-center sm:text-left">
           <h1 className="text-4xl font-bold tracking-tight text-slate-950 sm:text-5xl">Dashboard</h1>

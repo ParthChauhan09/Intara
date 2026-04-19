@@ -36,7 +36,7 @@ function Home() {
   };
 
   return (
-    <PageContainer>
+    <PageContainer showLogout>
       <HeroSection />
       <ComplaintForm
         onSubmit={handleCreateComplaint}
