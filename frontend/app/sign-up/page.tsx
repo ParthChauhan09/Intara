@@ -11,15 +11,10 @@ import { SignUpForm } from "@/components/auth/SignUpForm";
 function SignUpPage() {
   const router = useRouter();
   const { auth } = useMainContext();
-  const { isReady, isAllowed } = useGuestOnlyRoute("/");
+  const { isAllowed } = useGuestOnlyRoute("/");
 
-  if (!isReady) {
-    return <FullPageLoader label="Loading..." />;
-  }
-
-  if (!isAllowed) {
-    return <FullPageLoader label="Redirecting..." />;
-  }
+  // isReady is guaranteed by the global loader in MainContext
+  if (!isAllowed) return <FullPageLoader />;
 
   const handleSubmit = async (name: string, email: string, password: string) => {
     await auth.signUp(name, email, password);
@@ -32,10 +27,7 @@ function SignUpPage() {
       title="Create your account"
       subtitle="Fill in your details below to get started."
     >
-      <SignUpForm
-        onSubmit={handleSubmit}
-        isSubmitting={auth.isLoading}
-      />
+      <SignUpForm onSubmit={handleSubmit} isSubmitting={auth.isLoading} />
     </AuthLayout>
   );
 }

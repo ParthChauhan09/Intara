@@ -74,8 +74,8 @@ function OperatorDashboard() {
     return true;
   }), [complaints, categoryFilter, priorityFilter, statusFilter]);
 
-  if (!isReady) return <FullPageLoader label="Checking session..." />;
-  if (!isAllowed) return <FullPageLoader label="Redirecting..." />;
+  if (!isAllowed) return <FullPageLoader />;
+  if (loading) return <FullPageLoader />;
 
   return (
     <PageContainer maxWidth="full" showLogout>
@@ -84,8 +84,6 @@ function OperatorDashboard() {
           <h1 className="text-4xl font-bold tracking-tight text-slate-950 sm:text-5xl">Complaints</h1>
           <p className="mt-3 text-lg text-slate-600">Review and manage all incoming complaints.</p>
         </div>
-
-        {loading && <div className="text-center text-slate-500 my-20 text-lg animate-pulse">Loading...</div>}
 
         {error && (
           <Card variant="panel" className="bg-red-50 border-red-200 mb-8">

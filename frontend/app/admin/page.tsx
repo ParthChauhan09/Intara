@@ -135,8 +135,8 @@ function AdminDashboard() {
     });
   };
 
-  if (!isReady) return <FullPageLoader label="Checking session..." />;
-  if (!isAllowed) return <FullPageLoader label="Redirecting..." />;
+  if (!isAllowed) return <FullPageLoader />;
+  if (loading) return <FullPageLoader />;
 
   const renderPieChart = (data: StatItem[]) => (
     <ResponsiveContainer width="100%" height={300}>
@@ -175,8 +175,6 @@ function AdminDashboard() {
           <p className="mt-4 text-lg text-slate-600">Overview of all complaint analytics and system metrics.</p>
         </div>
 
-        {loading && <div className="text-center text-slate-500 my-20 text-lg animate-pulse">Loading stats...</div>}
-        
         {error && (
           <Card variant="panel" className="bg-red-50 border-red-200 mb-8 pb-4 pt-4">
             <CardContent className="text-red-700 font-medium text-center mt-0">
