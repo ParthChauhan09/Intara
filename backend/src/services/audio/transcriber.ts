@@ -24,9 +24,6 @@ export async function transcribeAudio(filePath: string): Promise<string> {
     );
   }
 
-  console.log(`[transcriber] Sending to Groq Whisper: ${path.basename(filePath)}`);
-
-  // Build multipart form — Groq expects the same format as OpenAI
   const fileBuffer  = fs.readFileSync(filePath);
   const fileName    = path.basename(filePath);
   const mimeType    = getMimeType(fileName);
@@ -49,10 +46,7 @@ export async function transcribeAudio(filePath: string): Promise<string> {
 
   const result = await response.json() as { text: string };
   const transcript = result.text?.trim();
-
   if (!transcript) throw new Error('Groq returned empty transcript');
-
-  console.log(`[transcriber] Transcript received (${transcript.length} chars)`);
   return transcript;
 }
 

@@ -11,11 +11,11 @@ const upload = multer({
   dest: os.tmpdir(),
   limits: { fileSize: 25 * 1024 * 1024 }, // 25 MB max (Whisper limit)
   fileFilter: (_req, file, cb) => {
-    const allowed = ['audio/mpeg', 'audio/wav', 'audio/x-wav', 'audio/mp4', 'audio/m4a', 'audio/x-m4a'];
-    if (allowed.includes(file.mimetype) || file.originalname.match(/\.(mp3|wav|m4a)$/i)) {
+    const allowed = ['audio/mpeg', 'audio/wav', 'audio/x-wav', 'audio/mp4', 'audio/m4a', 'audio/x-m4a', 'video/mp4'];
+    if (allowed.includes(file.mimetype) || file.originalname.match(/\.(mp3|wav|m4a|mp4|webm|ogg)$/i)) {
       cb(null, true);
     } else {
-      cb(new Error('Only mp3, wav, and m4a audio files are supported.'));
+      cb(new Error('Unsupported file type. Supported formats: mp3, wav, m4a, mp4, webm, ogg.'));
     }
   },
 });
