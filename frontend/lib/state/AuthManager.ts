@@ -8,18 +8,29 @@ type AuthSession = {
   access_token?: string;
 } | null;
 
+export type AuthUser = {
+  id: string;
+  email?: string;
+  user_metadata?: {
+    role?: string;
+    name?: string;
+    [key: string]: unknown;
+  };
+  [key: string]: unknown;
+};
+
 type AuthResponse = {
-  user: unknown;
+  user: AuthUser | null;
   session: AuthSession;
 };
 
 type MeResponse = {
-  user: unknown;
+  user: AuthUser | null;
 };
 
 export class AuthManager {
   accessToken: string | null = null;
-  user: unknown | null = null;
+  user: AuthUser | null = null;
   isHydrated = false;
   isLoading = false;
   error: string | null = null;
@@ -32,13 +43,18 @@ export class AuthManager {
     return Boolean(this.accessToken);
   }
 
+  get isAdmin(): boolean {
+    return this.user?.user_metadata?.role === "admin";
+  }
+
   async hydrate(): Promise<void> {
     if (typeof window === "undefined") return;
 
     const token = AuthStorage.getAccessToken();
     runInAction(() => {
       this.accessToken = token;
-      this.isHydrated = true;
+      // Don't mark hydrated yet — wait for fetchMe to resolve so
+      // role-based route guards have the full user before deciding.
     });
 
     if (token) {
@@ -48,12 +64,16 @@ export class AuthManager {
         this.user = null;
       });
     }
+
+    runInAction(() => {
+      this.isHydrated = true;
+    });
   }
 
   private setSessionFromAuthResponse(result: AuthResponse) {
     const token = result.session?.access_token || null;
     this.accessToken = token;
-    this.user = result.user ?? null;
+    this.user = (result.user as AuthUser) ?? null;
     this.error = null;
     this.isHydrated = true;
 

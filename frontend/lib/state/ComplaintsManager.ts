@@ -9,9 +9,9 @@ export type Complaint = {
   id: string;
   userId: string;
   description: string;
-  category: string;
-  priority: string;
-  recommendation: string[];
+  category?: string;
+  priority?: string;
+  recommendation?: string[];
   status: ComplaintStatus;
   slaDeadline: string | null;
   createdAt: string;

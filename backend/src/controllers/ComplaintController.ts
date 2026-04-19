@@ -20,8 +20,12 @@ type UpdateComplaintStatusBody = {
   slaDeadline?: string | null;
 };
 
-const complaintSelect =
+const complaintSelectAdmin =
   "id,userId:user_id,description,category,priority,recommendation,status,slaDeadline:sla_deadline,createdAt:created_at";
+
+// Regular users do not see category, priority, or recommendation
+const complaintSelectUser =
+  "id,userId:user_id,description,status,slaDeadline:sla_deadline,createdAt:created_at";
 
 export class ComplaintController {
   private constructor() {}
@@ -54,7 +58,7 @@ export class ComplaintController {
       const supabase = createSupabaseUserClient(req.accessToken);
       const { data, error } = await supabase
         .from("complaints")
-        .select(complaintSelect)
+        .select(complaintSelectUser)
         .order("created_at", { ascending: false });
       if (error) return res.status(400).json({ error: error.message });
       return res.json({ complaints: data || [] });
@@ -111,7 +115,7 @@ export class ComplaintController {
           recommendation,
           sla_deadline: slaDeadline ?? null
         })
-        .select(complaintSelect)
+        .select(complaintSelectUser)
         .single();
       if (error) return res.status(400).json({ error: error.message });
       return res.status(201).json({ complaint: data });
@@ -174,7 +178,7 @@ export class ComplaintController {
           recommendation,
           sla_deadline: null
         })
-        .select(complaintSelect)
+        .select(complaintSelectUser)
         .single();
       
       if (error) return res.status(400).json({ error: error.message });
@@ -213,7 +217,7 @@ export class ComplaintController {
         .update(patch)
         .eq("id", id)
         .eq("user_id", req.user.id)
-        .select(complaintSelect)
+        .select(complaintSelectUser)
         .single();
       if (error) return res.status(400).json({ error: error.message });
       return res.json({ complaint: data });

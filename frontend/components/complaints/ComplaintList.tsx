@@ -6,10 +6,11 @@ import type { Complaint } from "@/lib/state/ComplaintsManager";
 
 interface ComplaintListProps {
   complaints: Complaint[];
+  isAdmin?: boolean;
   onUpdateStatus?: (id: string, status: string) => void;
 }
 
-export function ComplaintList({ complaints, onUpdateStatus }: ComplaintListProps) {
+export function ComplaintList({ complaints, isAdmin = false, onUpdateStatus }: ComplaintListProps) {
   if (complaints.length === 0) {
     return null;
   }
@@ -26,7 +27,7 @@ export function ComplaintList({ complaints, onUpdateStatus }: ComplaintListProps
       <CardContent>
         <div className="space-y-4">
           {complaints.map((complaint) => (
-            <ComplaintCard key={complaint.id} complaint={complaint} onUpdateStatus={onUpdateStatus} />
+            <ComplaintCard key={complaint.id} complaint={complaint} isAdmin={isAdmin} onUpdateStatus={onUpdateStatus} />
           ))}
         </div>
       </CardContent>

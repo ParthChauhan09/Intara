@@ -25,7 +25,7 @@ const COLORS = ["#0F172A", "#334155", "#64748B", "#94A3B8", "#CBD5E1"];
 
 function AdminDashboard() {
   const { auth } = useMainContext();
-  const { isReady, isAllowed } = useProtectedRoute("/sign-in");
+  const { isReady, isAllowed } = useProtectedRoute("/sign-in", true);
 
   const [stats, setStats] = useState<DashboardStats | null>(null);
   const [error, setError] = useState<string | null>(null);
@@ -177,7 +177,7 @@ function AdminDashboard() {
             </div>
 
             <div className="mt-12">
-              <ComplaintList complaints={stats.complaints} onUpdateStatus={handleUpdateStatus} />
+              <ComplaintList complaints={stats.complaints} isAdmin={true} onUpdateStatus={handleUpdateStatus} />
             </div>
           </>
         )}

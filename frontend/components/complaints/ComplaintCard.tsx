@@ -8,6 +8,7 @@ import { cn } from "@/lib/utils";
 
 interface ComplaintCardProps {
   complaint: Complaint;
+  isAdmin?: boolean;
   onUpdateStatus?: (id: string, status: string) => void;
 }
 
@@ -67,7 +68,7 @@ function StatusDropdown({
   );
 }
 
-export function ComplaintCard({ complaint, onUpdateStatus }: ComplaintCardProps) {
+export function ComplaintCard({ complaint, isAdmin = false, onUpdateStatus }: ComplaintCardProps) {
   const [isExpanded, setIsExpanded] = useState(false);
 
   const handleStatusChange = (newStatus: string) => {
@@ -90,8 +91,8 @@ export function ComplaintCard({ complaint, onUpdateStatus }: ComplaintCardProps)
             {complaint.description}
           </p>
           <div className="mt-2 flex flex-wrap items-center gap-2">
-            <CategoryBadge category={complaint.category} />
-            <PriorityBadge priority={complaint.priority} />
+            {isAdmin && complaint.category && <CategoryBadge category={complaint.category} />}
+            {isAdmin && complaint.priority && <PriorityBadge priority={complaint.priority} />}
           </div>
         </div>
         {onUpdateStatus ? (
@@ -111,7 +112,7 @@ export function ComplaintCard({ complaint, onUpdateStatus }: ComplaintCardProps)
         ID: {complaint.id}
       </p>
 
-      {complaint.recommendation && Array.isArray(complaint.recommendation) && complaint.recommendation.length > 0 && (
+      {isAdmin && complaint.recommendation && Array.isArray(complaint.recommendation) && complaint.recommendation.length > 0 && (
         <div className="mt-4 border-t border-slate-200 pt-3">
           <h4 className="text-xs font-semibold text-slate-700 uppercase tracking-wide mb-2">Recommendations</h4>
           <ul className="list-disc pl-4 space-y-1">
