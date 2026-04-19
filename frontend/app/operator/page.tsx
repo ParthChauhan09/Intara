@@ -115,7 +115,11 @@ function OperatorDashboard() {
               </CardHeader>
               <CardContent className="p-0">
                 {filtered.length === 0 ? (
-                  <p className="text-center text-slate-500 py-16">No complaints match the current filters.</p>
+                  <div className="flex flex-col items-center justify-center py-16 text-center">
+                    <svg xmlns="http://www.w3.org/2000/svg" width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" className="text-slate-300 mb-4"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.3-4.3"/><path d="M11 8v6"/><path d="M8 11h6"/></svg>
+                    <p className="text-sm font-medium text-slate-500">No complaints match your filters</p>
+                    <p className="text-xs text-slate-400 mt-1">Try adjusting or clearing the filters above</p>
+                  </div>
                 ) : (
                   <div className="divide-y divide-slate-100">
                     {filtered.map((c) => (
