@@ -53,7 +53,7 @@ function StatusDropdown({ status, onChange }: { status: string; onChange: (v: st
 
 function ComplaintDetailPage() {
   const { auth } = useMainContext();
-  const { isReady, isAllowed } = useProtectedRoute("/sign-in", "operator");
+  const { isAllowed } = useProtectedRoute("/sign-in", "operator");
   const router = useRouter();
   const params = useParams();
   const id = params.id as string;
@@ -104,9 +104,8 @@ function ComplaintDetailPage() {
     }
   };
 
-  if (!isReady) return <FullPageLoader label="Checking session..." />;
-  if (!isAllowed) return <FullPageLoader label="Redirecting..." />;
-  if (loading) return <FullPageLoader label="Loading complaint..." />;
+  if (!isAllowed) return <FullPageLoader />;
+  if (loading) return <FullPageLoader />;
 
   return (
     <PageContainer maxWidth="4xl" showLogout>

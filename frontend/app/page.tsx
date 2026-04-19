@@ -18,8 +18,7 @@ function Home() {
     }
   }, [auth.accessToken, complaints]);
 
-  if (!isReady) return <FullPageLoader label="Checking session..." />;
-  if (!isAllowed) return <FullPageLoader label="Redirecting..." />;
+  if (!isAllowed) return <FullPageLoader />;
 
   const handleCreateComplaint = async (description: string) => {
     if (!auth.accessToken) {
