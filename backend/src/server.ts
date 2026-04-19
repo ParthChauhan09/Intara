@@ -7,6 +7,7 @@ import cors from "cors";
 import { authRouter } from "./routes/auth.ts";
 import { complaintsRouter } from "./routes/complaints.ts";
 import { adminRouter } from "./routes/admin.ts";
+import { operatorRouter } from "./routes/operator.ts";
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -74,6 +75,7 @@ app.get("/health", (_req, res) => {
 app.use(authRouter);
 app.use(complaintsRouter);
 app.use(adminRouter);
+app.use(operatorRouter);
 
 app.listen(port, () => {
   console.log(`Server running on port ${port}`);

@@ -62,7 +62,7 @@ function FilterBar({
 
 function AdminDashboard() {
   const { auth } = useMainContext();
-  const { isReady, isAllowed } = useProtectedRoute("/sign-in", true);
+  const { isReady, isAllowed } = useProtectedRoute("/sign-in", "admin");
 
   const [stats, setStats] = useState<DashboardStats | null>(null);
   const [error, setError] = useState<string | null>(null);

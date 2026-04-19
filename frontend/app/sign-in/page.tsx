@@ -29,6 +29,8 @@ function SignInPage() {
     
     if (role === "admin") {
       router.push("/admin");
+    } else if (role === "operator") {
+      router.push("/operator");
     } else {
       router.push("/");
     }

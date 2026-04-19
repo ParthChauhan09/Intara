@@ -14,6 +14,10 @@ export const apiEndPointMap = {
     create: "/complaints",
     createAudio: "/complaints/audio",
     updateStatus: "/complaints/update"
+  },
+  operator: {
+    complaints: "/operator/complaints",
+    updateStatus: "/operator/complaints/update"
   }
 } as const;
 

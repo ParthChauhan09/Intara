@@ -1,6 +1,7 @@
 export enum Role {
   CUSTOMER = "customer",
-  ADMIN = "admin"
+  ADMIN = "admin",
+  OPERATOR = "operator"
 }
 
 export type UserRole = Role;

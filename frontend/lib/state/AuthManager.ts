@@ -47,6 +47,10 @@ export class AuthManager {
     return this.user?.user_metadata?.role === "admin";
   }
 
+  get isOperator(): boolean {
+    return this.user?.user_metadata?.role === "operator";
+  }
+
   async hydrate(): Promise<void> {
     if (typeof window === "undefined") return;
 
