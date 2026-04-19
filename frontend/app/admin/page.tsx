@@ -65,7 +65,7 @@ function FilterBar({
 
 function AdminDashboard() {
   const { auth } = useMainContext();
-  const { isReady, isAllowed } = useProtectedRoute("/sign-in", "admin");
+  const { isAllowed } = useProtectedRoute("/sign-in", "admin");
 
   const [stats, setStats] = useState<DashboardStats | null>(null);
   const [error, setError] = useState<string | null>(null);
@@ -155,8 +155,8 @@ function AdminDashboard() {
           ))}
         </Pie>
         <Tooltip
-          formatter={(value) => [`${value}`, '']}
-          contentStyle={{ borderRadius: '1rem', border: 'none', boxShadow: '0 20px 50px -30px rgba(15,23,42,0.35)' }}
+          formatter={(value, name) => [value, name]}
+          contentStyle={{ borderRadius: '1rem', border: 'none', boxShadow: '0 20px 50px -30px rgba(15,23,42,0.35)', fontSize: 13 }}
         />
         <Legend
           iconType="circle"
