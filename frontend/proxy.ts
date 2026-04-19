@@ -3,7 +3,7 @@ import { NextResponse } from "next/server";
 
 const ACCESS_TOKEN_COOKIE = "intara_access_token";
 
-export function middleware(req: NextRequest) {
+export function proxy(req: NextRequest) {
   const token = req.cookies.get(ACCESS_TOKEN_COOKIE)?.value;
   if (!token) return NextResponse.next();
 

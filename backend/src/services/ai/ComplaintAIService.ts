@@ -65,7 +65,9 @@ export class ComplaintAIService {
     priorities: string[] = [...DEFAULT_PRIORITIES],
     config?:    ServiceConfig,
   ): Promise<ComplaintOutput> {
-    if (!ComplaintAIService.instance) {
+    // Re-create the instance if a new geminiApiKey is explicitly provided
+    // so the key is never stale from a previous singleton construction.
+    if (!ComplaintAIService.instance || config?.geminiApiKey) {
       ComplaintAIService.instance = new ComplaintAIService(config ?? {});
     }
     return ComplaintAIService.instance.run(text, categories, priorities);
@@ -100,15 +102,21 @@ export class ComplaintAIService {
     this.log('process.parallel', {
       ml:     mlResult     ? { cat: mlResult.category,     conf: mlResult.confidence }     : null,
       kw:     keywordResult ? { cat: keywordResult.category, conf: keywordResult.confidence } : null,
-      gemini: { cat: geminiResult.category, pri: geminiResult.priority, conf: geminiResult.confidence, spam: geminiResult.spam },
+      gemini: { cat: geminiResult.category, pri: geminiResult.priority, conf: geminiResult.confidence, spam: geminiResult.spam, source: geminiResult.source },
     });
+
+    // Layer 4.5: Gemini is compulsory — if it fell back, block classification
+    if (geminiResult.source === 'fallback') {
+      this.log('process.gemini_unavailable', { reason: 'Gemini fallback — cannot classify without primary judge' });
+      return { status: 'Needs Review', reason: 'Classification service temporarily unavailable. Please try again.', pattern_alert: null, escalation: 'Manual review required' };
+    }
 
     // Layer 5: Spam gate
     if (geminiResult.spam) {
       return { status: 'Needs Review', reason: 'Spam or meaningless input detected', pattern_alert: null, escalation: 'Manual review required' };
     }
-    if (mlResult && mlResult.confidence < THRESHOLDS.SPAM_ML_CONFIDENCE
-        && keywordResult.category === 'Unknown'
+    if (keywordResult.category === 'Unknown'
+        && (mlResult?.confidence ?? 0) < THRESHOLDS.SPAM_ML_CONFIDENCE
         && geminiResult.confidence < THRESHOLDS.SPAM_GEMINI_CONFIDENCE) {
       return { status: 'Needs Review', reason: 'Unable to classify — all layers low confidence', pattern_alert: null, escalation: 'Manual review required' };
     }
@@ -162,14 +170,33 @@ export class ComplaintAIService {
 
     const words = (cleaned.toLowerCase().match(/[a-z]+/g) ?? []).filter(Boolean);
     if (words.length === 0) return { valid: false, reason: 'Invalid or spam input' };
-    if (words.length === 1 && words[0].length <= 3) return { valid: false, reason: 'Input too short or meaningless' };
+    if (words.length === 1 && words[0].length <= 4) return { valid: false, reason: 'Input too short or meaningless' };
+
+    // Detect repeated-character spam: e.g. "happpyyyyyyy", "heyyyy", "soooome"
+    // A word is spammy if any single character makes up > 50% of it
+    const hasRepeatedCharSpam = words.some(w => {
+      if (w.length < 4) return false;
+      const charCounts: Record<string, number> = {};
+      for (const ch of w) charCounts[ch] = (charCounts[ch] ?? 0) + 1;
+      return Math.max(...Object.values(charCounts)) / w.length > 0.50;
+    });
+    if (hasRepeatedCharSpam) return { valid: false, reason: 'Invalid or spam input' };
+
+    // Reject single generic words with no complaint context
+    const meaninglessWords = new Set([
+      'hello', 'hey', 'hi', 'test', 'testing', 'okay', 'ok', 'yes', 'no',
+      'some', 'thing', 'stuff', 'blah', 'lol', 'haha', 'hmm', 'umm', 'ugh',
+      'what', 'why', 'how', 'who', 'when', 'where', 'help', 'please',
+    ]);
+    if (words.length === 1 && meaninglessWords.has(words[0])) {
+      return { valid: false, reason: 'Input too short or meaningless' };
+    }
 
     // Only reject gibberish if ALL long words have no vowels (not just one)
     const longWords = words.filter(w => w.length >= 5);
     const allGibberish = longWords.length > 0 && longWords.every(w => !/[aeiou]/.test(w));
     const joined     = words.join('');
     const vowelRatio = (joined.match(/[aeiou]/g) ?? []).length / joined.length;
-    // Raise threshold: only reject if vowel ratio < 0.10 (was 0.15) to avoid false positives
     if (allGibberish || vowelRatio < 0.10) return { valid: false, reason: 'Invalid or spam input' };
 
     return { valid: true, cleanedText: cleaned };
@@ -300,8 +327,9 @@ export class ComplaintAIService {
       return { priority: lowPriority, urgencyScore, priorityReasoning: `Priority: ${parts.join(' ')}` };
     }
 
-    const urgencyScore = clamp(geminiUrgency * 0.55 + maxSignalScore * 0.30 + categoryBase * 0.15);
-    let priority       = ai.source === 'gemini' ? ai.priority : priorities[Math.floor(priorities.length / 2)];
+    const urgencyScore = clamp(geminiUrgency * 0.60 + maxSignalScore * 0.30 + categoryBase * 0.10);
+    // Gemini is compulsory — its priority is always the base truth
+    let priority = ai.priority;
 
     // Critical signal override → highest priority
     if (maxSignalScore >= THRESHOLDS.CRITICAL_SIGNAL_OVERRIDE && priority !== highPriority) {

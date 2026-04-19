@@ -18,17 +18,17 @@ export const LOW_PRIORITY_CATEGORY = 'Trade';
 
 // ─── Ensemble weights ─────────────────────────────────────────────────────────
 export const WEIGHTS = {
-  ML_DEFAULT:      0.55,
-  GEMINI_DEFAULT:  0.35,
+  ML_DEFAULT:      0.25, // ML supports Gemini, not the other way around
+  GEMINI_DEFAULT:  0.65, // Gemini is the primary classification judge
   KEYWORD:         0.10,
-  GEMINI_OVERRIDE: 0.55, // when Gemini strongly disagrees with ML
-  ML_OVERRIDE:     0.35, // ML weight when Gemini overrides
-  FALLBACK_GEMINI: 0.15, // when Gemini is in fallback mode
+  GEMINI_OVERRIDE: 0.75, // when Gemini strongly disagrees with ML
+  ML_OVERRIDE:     0.15, // ML weight when Gemini overrides
+  FALLBACK_GEMINI: 0.15, // unused now (fallback blocked), kept for safety
 } as const;
 
 // ─── Confidence thresholds ────────────────────────────────────────────────────
 export const THRESHOLDS = {
-  GEMINI_OVERRIDE_CONFIDENCE:  0.80, // Gemini confidence needed to override ML
+  GEMINI_OVERRIDE_CONFIDENCE:  0.70, // Gemini confidence needed to override ML (lowered — Gemini is primary)
   SPAM_ML_CONFIDENCE:          0.45, // ML below this + no keyword + low Gemini = Needs Review
   SPAM_GEMINI_CONFIDENCE:      0.60,
   AGREEMENT_BOOST_ALL:         0.08,
@@ -43,19 +43,30 @@ export const THRESHOLDS = {
 // ─── Urgency signals (phrase → score 0-1) ────────────────────────────────────
 // Derived from domain knowledge — priority in TS-PS14.csv is uniformly random
 export const URGENCY_SIGNALS: Array<[string, number]> = [
-  // Critical health/safety — always High Risk
+  // Physical injury / personal harm — always High
+  ['injured',            1.00], ['injury',             1.00],
+  ['hurt',               0.95], ['pain',               0.90],
+  ['accident',           0.95], ['fell',               0.90],
+  ['bleeding',           1.00], ['fracture',           1.00],
+  ['broken bone',        1.00], ['hospitalized',       1.00],
+  ['hospital',           0.95], ['ambulance',          1.00],
+  ['negligence',         0.90], ['harmed',             0.95],
+  ['physical harm',      1.00], ['serious injury',     1.00],
+  ['got hurt',           0.95], ['got injured',        1.00],
+  ['in pain',            0.90], ['severe pain',        1.00],
+  // Critical health/safety
   ['emergency',          1.00], ['life threatening',   1.00],
-  ['hospital',           0.95], ['doctor',             0.90],
-  ['allergic reaction',  0.95], ['contaminated',       0.95],
-  ['unsafe',             0.95], ['food poisoning',     0.95],
-  ['breathing',          0.95], ['breathing difficulty', 0.95],
-  ['child',              0.90], ['pregnant',           0.90],
-  ['vomiting',           0.90], ['nausea',             0.85],
-  ['side effect',        0.85], ['adverse reaction',   0.90],
-  ['tampered',           0.90], ['foreign particles',  0.90],
-  ['feeling unwell',     0.85], ['unwell',             0.80],
-  ['reaction',           0.80], ['symptoms',           0.80],
-  ['food supplement',    0.75], ['herbal tonic',       0.70],
+  ['doctor',             0.90], ['allergic reaction',  0.95],
+  ['contaminated',       0.95], ['unsafe',             0.95],
+  ['food poisoning',     0.95], ['breathing',          0.95],
+  ['breathing difficulty', 0.95], ['child',            0.90],
+  ['pregnant',           0.90], ['vomiting',           0.90],
+  ['nausea',             0.85], ['side effect',        0.85],
+  ['adverse reaction',   0.90], ['tampered',           0.90],
+  ['foreign particles',  0.90], ['feeling unwell',     0.85],
+  ['unwell',             0.80], ['reaction',           0.80],
+  ['symptoms',           0.80], ['food supplement',    0.75],
+  ['herbal tonic',       0.70],
   // High urgency — product/packaging failures
   ['urgent',             0.85], ['immediately',        0.85],
   ['asap',               0.80], ['critical',           0.80],

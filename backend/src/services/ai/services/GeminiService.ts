@@ -19,7 +19,7 @@ interface GeminiRawResult {
 }
 
 export class GeminiService {
-  private readonly apiKey?:      string;
+  private apiKey?: string;
   private readonly model:        string;
   private readonly baseUrl:      string;
   private readonly timeoutMs:    number;
@@ -52,13 +52,16 @@ export class GeminiService {
     validCategories:    string[] = ['Product', 'Packaging', 'Trade', 'Invalid'],
     validPriorities:    string[] = ['High', 'Medium', 'Low'],
   ): Promise<GeminiResult> {
-    if (!this.apiKey) {
+    // Re-read the API key on every call so it's always fresh from env
+    const apiKey = this.apiKey ?? process.env.GEMINI_API_KEY;
+
+    if (!apiKey) {
       this.log('GeminiService.fallback', { reason: 'no_api_key' });
       return this.buildFallback(text, validCategories, validPriorities, 'No Gemini API key.');
     }
 
     const prompt = this.buildPrompt(text, validCategories, validPriorities);
-    const url    = `${this.baseUrl}/models/${this.model}:generateContent?key=${encodeURIComponent(this.apiKey)}`;
+    const url    = `${this.baseUrl}/models/${this.model}:generateContent?key=${encodeURIComponent(apiKey)}`;
     const ctrl   = new AbortController();
     const timer  = setTimeout(() => ctrl.abort(), this.timeoutMs);
 
@@ -102,9 +105,7 @@ export class GeminiService {
 
   private buildPrompt(text: string, categories: string[], priorities: string[]): string {
     return [
-      'You are a complaint triage specialist.',
-      'A trained ML model has already classified the complaint category.',
-      'Your job is to assess PRIORITY, URGENCY, and recommend an ACTION.',
+      'You are a complaint triage specialist. Your job is to assess PRIORITY, URGENCY, CATEGORY, and recommend ACTIONS.',
       '',
       'Complaint:',
       `"${text}"`,
@@ -119,14 +120,25 @@ export class GeminiService {
       '  "recommended_actions": ["first actionable step for the support team", "second actionable step"]',
       '}',
       '',
-      'Priority rules:',
-      `  ${priorities[0]} → health risk, safety issue, urgent/immediately, broken/defective/damaged, tampered, leaking`,
-      `  ${priorities[1] ?? priorities[0]} → quality complaint, packaging damage without safety risk, replacement/refund request`,
+      `Priority rules (${priorities[0]} = most urgent, ${priorities[priorities.length - 1]} = least urgent):`,
+      `  ${priorities[0]} → ANY of: physical injury, harm, pain, accident, hurt, bleeding, hospitalization,`,
+      `           health risk, safety issue, negligence causing harm, emotional distress from serious incident,`,
+      `           urgent/immediately/emergency, broken/defective/damaged product, tampered, leaking,`,
+      `           contaminated, allergic reaction, food poisoning, breathing difficulty`,
+      `  ${priorities[1] ?? priorities[0]} → quality complaint, packaging damage without safety risk,`,
+      `           replacement/refund request, service dissatisfaction without physical harm`,
       `  ${priorities[priorities.length - 1]} → routine inquiry, pricing question, general information request`,
       '',
-      'Urgency score: 0.9-1.0 for health/safety, 0.7-0.89 for broken/defective, 0.5-0.69 for quality issues, 0.2-0.49 for routine inquiry.',
-      'spam: true only if the input is gibberish, random characters, or completely meaningless.',
-      'recommended_actions: Provide an array of exactly 2 to 3 specific actionable steps for the support agent to take.',
+      'Urgency score guidelines:',
+      '  0.9-1.0 → physical injury, health/safety emergency, life-threatening',
+      '  0.7-0.89 → serious harm, negligence, broken/defective product, contamination',
+      '  0.5-0.69 → quality issues, service failure, significant dissatisfaction',
+      '  0.2-0.49 → routine inquiry, minor complaint',
+      '',
+      'spam: true ONLY if the input is gibberish, random characters, or completely meaningless.',
+      'recommended_actions: Exactly 2-3 specific actionable steps for the support agent.',
+      '',
+      'IMPORTANT: If the complaint describes any physical injury, harm, pain, or safety risk to a person — always assign the highest priority regardless of category.',
     ].join('\n');
   }
 
