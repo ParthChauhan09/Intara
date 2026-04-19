@@ -8,7 +8,7 @@ import { useMainContext } from "@/lib/state/MainContext";
 import { PageContainer } from "@/components/layout/PageContainer";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/Card";
 import { apiJson, ApiError } from "@/lib/apiClient";
-import { PieChart, Pie, Cell, Tooltip, BarChart, Bar, XAxis, YAxis, CartesianGrid, ResponsiveContainer } from "recharts";
+import { PieChart, Pie, Cell, Tooltip, Legend, BarChart, Bar, XAxis, YAxis, CartesianGrid, ResponsiveContainer } from "recharts";
 import { ComplaintList } from "@/components/complaints/ComplaintList";
 import type { Complaint } from "@/lib/state/ComplaintsManager";
 
@@ -89,19 +89,24 @@ function AdminDashboard() {
           data={data}
           cx="50%"
           cy="50%"
-          labelLine={false}
-          outerRadius={80}
-          innerRadius={40}
+          outerRadius={90}
+          innerRadius={45}
           paddingAngle={2}
-          fill="#8884d8"
           dataKey="value"
-          label={({ name, percent }) => `${name} ${((percent || 0) * 100).toFixed(0)}%`}
         >
           {data.map((entry, index) => (
             <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
           ))}
         </Pie>
-        <Tooltip contentStyle={{borderRadius: '1rem', border: 'none', boxShadow: '0 20px 50px -30px rgba(15,23,42,0.35)'}} />
+        <Tooltip
+          formatter={(value: number, name: string) => [`${value}`, name]}
+          contentStyle={{ borderRadius: '1rem', border: 'none', boxShadow: '0 20px 50px -30px rgba(15,23,42,0.35)' }}
+        />
+        <Legend
+          iconType="circle"
+          iconSize={8}
+          formatter={(value) => <span style={{ fontSize: 12, color: '#475569' }}>{value}</span>}
+        />
       </PieChart>
     </ResponsiveContainer>
   );

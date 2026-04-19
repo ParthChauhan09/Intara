@@ -68,12 +68,6 @@ export function SignInForm({ onSubmit, isSubmitting }: SignInFormProps) {
               />
               Remember me
             </label>
-            <Link
-              href="/sign-in"
-              className="text-sm font-medium text-slate-700 transition hover:text-slate-950"
-            >
-              Forgot password?
-            </Link>
           </div>
 
           <button

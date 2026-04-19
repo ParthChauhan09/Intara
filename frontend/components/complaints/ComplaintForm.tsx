@@ -3,7 +3,7 @@
 import { FormEvent, useState } from "react";
 import { Textarea } from "@/components/ui/Textarea";
 import { FormField } from "@/components/ui/FormField";
-import { Card, CardHeader, CardTitle, CardDescription, CardContent, CardFooter } from "@/components/ui/Card";
+import { Card, CardHeader, CardTitle, CardDescription, CardContent } from "@/components/ui/Card";
 import { Badge } from "@/components/ui/Badge";
 import type { Complaint } from "@/lib/state/ComplaintsManager";
 
@@ -145,15 +145,6 @@ export function ComplaintForm({ onSubmit, onSubmitAudio, isSubmitting }: Complai
           </div>
         )}
       </CardContent>
-
-      <CardFooter>
-        <p className="text-sm text-slate-500">
-          Need account access instead?{" "}
-          <a href="/sign-in" className="font-medium text-slate-900">
-            Sign in
-          </a>
-        </p>
-      </CardFooter>
     </Card>
   );
 }

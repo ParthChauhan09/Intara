@@ -30,7 +30,7 @@ function SignUpPage() {
   return (
     <AuthLayout
       title="Create your account"
-      subtitle="This sign-up page mirrors the default shadcn/ui form layout so it feels familiar when you install the components."
+      subtitle="Fill in your details below to get started."
     >
       <SignUpForm
         onSubmit={handleSubmit}

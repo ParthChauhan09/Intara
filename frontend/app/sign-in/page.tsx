@@ -39,7 +39,7 @@ function SignInPage() {
   return (
     <AuthLayout
       title="Sign in to continue"
-      subtitle="Keep the default shadcn/ui structure and customize the fields or actions later as your auth flow grows."
+      subtitle="Enter your email and password to access your account."
     >
       <SignInForm
         onSubmit={handleSubmit}
