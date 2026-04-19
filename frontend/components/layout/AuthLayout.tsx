@@ -1,4 +1,5 @@
 import { ReactNode } from "react";
+import { Logo } from "./Logo";
 
 interface AuthLayoutProps {
   children: ReactNode;
@@ -13,10 +14,8 @@ export function AuthLayout({ children, title, subtitle }: AuthLayoutProps) {
         {/* Left side - Branding */}
         <div className="hidden flex-col justify-between border-r border-slate-200 bg-[linear-gradient(180deg,#ffffff_0%,#f8fafc_100%)] p-12 lg:flex">
           <div>
-            <p className="text-sm font-medium uppercase tracking-[0.35em] text-slate-500">
-              Intara
-            </p>
-            <h1 className="mt-6 max-w-xl text-5xl font-semibold tracking-tight text-slate-950">
+            <Logo size="md" />
+            <h1 className="mt-8 max-w-xl text-5xl font-semibold tracking-tight text-slate-950">
               {title}
             </h1>
             {subtitle && (
@@ -28,7 +27,9 @@ export function AuthLayout({ children, title, subtitle }: AuthLayoutProps) {
         </div>
 
         {/* Right side - Content */}
-        <div className="flex items-center justify-center p-6 sm:p-10">
+        <div className="flex flex-col items-center justify-center gap-8 p-6 sm:p-10">
+          {/* Mobile logo */}
+          <Logo size="sm" className="lg:hidden" />
           {children}
         </div>
       </div>

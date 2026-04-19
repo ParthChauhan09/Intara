@@ -1,14 +1,13 @@
 "use client";
 
 import { Card } from "@/components/ui/Card";
+import { Logo } from "@/components/layout/Logo";
 
 export function HeroSection() {
   return (
     <Card variant="hero" className="w-full">
-      <p className="text-sm font-medium uppercase tracking-[0.35em] text-slate-500">
-        Intara Support
-      </p>
-      <blockquote className="mx-auto mt-6 max-w-3xl text-3xl font-semibold tracking-tight text-slate-950 sm:text-4xl lg:text-5xl">
+      <Logo size="lg" className="justify-center sm:justify-start" />
+      <blockquote className="mx-auto mt-8 max-w-3xl text-3xl font-semibold tracking-tight text-slate-950 sm:text-4xl lg:text-5xl">
         {"\""}One clear place to raise a complaint, share context, and get
         routed to the right team.{"\""}
       </blockquote>

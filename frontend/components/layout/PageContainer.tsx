@@ -1,6 +1,7 @@
 import { cn } from "@/lib/utils";
 import { ReactNode } from "react";
 import dynamic from "next/dynamic";
+import { Logo } from "./Logo";
 
 const LogoutButton = dynamic(() => import("./LogoutButton"), { ssr: false });
 
@@ -29,6 +30,11 @@ export function PageContainer({
 }: PageContainerProps) {
   return (
     <main className={cn("min-h-dvh px-4 py-6 sm:px-6 lg:px-8", className)}>
+      {showLogout && (
+        <div className="fixed top-4 left-4 z-50 sm:top-5 sm:left-6">
+          <Logo size="sm" />
+        </div>
+      )}
       {showLogout && (
         <div className="fixed top-4 right-4 z-50 sm:top-5 sm:right-6">
           <LogoutButton />
