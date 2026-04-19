@@ -2,7 +2,7 @@ create table if not exists public.users (
   id uuid primary key references auth.users (id) on delete cascade,
   name text not null check (char_length(name) > 0),
   email text not null unique,
-  role text not null default 'user' check (char_length(role) > 0)
+  role text not null default 'customer' check (role in ('customer', 'admin', 'operator'))
 );
 
 alter table public.users enable row level security;
@@ -28,9 +28,9 @@ begin
   insert into public.users (id, name, email, role)
   values (
     new.id,
-    new.raw_user_meta_data->>'name',
+    coalesce(new.raw_user_meta_data->>'name', ''),
     new.email,
-    coalesce(new.raw_user_meta_data->>'role', 'user')
+    coalesce(new.raw_user_meta_data->>'role', 'customer')
   )
   on conflict (id) do update
     set
@@ -45,7 +45,7 @@ $$;
 drop trigger if exists on_auth_user_created on auth.users;
 
 create trigger on_auth_user_created
-after insert on auth.users
+after insert or update on auth.users
 for each row
 execute procedure public.handle_auth_user_created();
 
