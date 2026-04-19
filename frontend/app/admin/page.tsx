@@ -11,6 +11,7 @@ import { apiJson, ApiError } from "@/lib/apiClient";
 import { PieChart, Pie, Cell, Tooltip, Legend, BarChart, Bar, XAxis, YAxis, CartesianGrid, ResponsiveContainer } from "recharts";
 import { ComplaintList } from "@/components/complaints/ComplaintList";
 import type { Complaint } from "@/lib/state/ComplaintsManager";
+import { exportToCsv, exportToPdf } from "@/lib/exportComplaints";
 
 type StatItem = { name: string; value: number };
 
@@ -252,9 +253,27 @@ function AdminDashboard() {
                     Clear filters
                   </button>
                 )}
-                <span className="ml-auto text-xs text-slate-400">
+                <span className="text-xs text-slate-400">
                   {filteredComplaints.length} of {stats.complaints.length} complaints
                 </span>
+                <div className="ml-auto flex items-center gap-2">
+                  <button
+                    type="button"
+                    onClick={() => exportToCsv(filteredComplaints)}
+                    className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium bg-slate-100 text-slate-600 hover:bg-slate-200 hover:text-slate-900 transition-colors"
+                  >
+                    <svg xmlns="http://www.w3.org/2000/svg" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+                    Export CSV
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => exportToPdf(filteredComplaints)}
+                    className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium bg-slate-950 text-white hover:bg-slate-800 transition-colors"
+                  >
+                    <svg xmlns="http://www.w3.org/2000/svg" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+                    Export PDF
+                  </button>
+                </div>
               </div>
               <ComplaintList complaints={filteredComplaints} isAdmin={true} onUpdateStatus={handleUpdateStatus} />
             </div>
