@@ -16,24 +16,6 @@ export function HeroSection() {
         prioritize, and route complaints after this intake screen collects
         the right details.
       </p>
-      <div className="mt-8 grid gap-3 sm:grid-cols-2">
-        <div className="rounded-2xl border border-slate-200 bg-slate-50 p-4">
-          <p className="text-xs uppercase tracking-[0.3em] text-slate-500">
-            Intake
-          </p>
-          <p className="mt-2 text-lg font-semibold text-slate-950">
-            Complaint first
-          </p>
-        </div>
-        <div className="rounded-2xl border border-slate-200 bg-slate-50 p-4">
-          <p className="text-xs uppercase tracking-[0.3em] text-slate-500">
-            Review
-          </p>
-          <p className="mt-2 text-lg font-semibold text-slate-950">
-            Manual and backend
-          </p>
-        </div>
-      </div>
     </Card>
   );
 }

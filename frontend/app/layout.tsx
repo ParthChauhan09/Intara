@@ -9,6 +9,10 @@ const geist = Geist({subsets:['latin'],variable:'--font-sans'});
 export const metadata: Metadata = {
   title: "Intara",
   description: "Frontend for Intara.",
+  icons: {
+    icon: "/intara-favicon.png",
+    apple: "/intara-favicon.png",
+  },
 };
 
 export default function RootLayout({
