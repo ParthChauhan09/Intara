@@ -13,6 +13,7 @@ import { apiEndPointMap } from "@/lib/apiEndPointMap";
 import { StatusBadge, statusVariantMap } from "@/components/complaints/StatusBadge";
 import { PriorityBadge } from "@/components/complaints/PriorityBadge";
 import { CategoryBadge } from "@/components/complaints/CategoryBadge";
+import { SlaCountdown } from "@/components/complaints/SlaCountdown";
 import { variantStyles } from "@/components/ui/Badge";
 import { cn } from "@/lib/utils";
 import type { Complaint } from "@/lib/state/ComplaintsManager";
@@ -140,6 +141,15 @@ function ComplaintDetailPage() {
               <div className="mt-6 flex flex-wrap gap-6 text-sm text-slate-500">
                 <span>ID: <span className="font-mono text-slate-700">{complaint.id}</span></span>
                 <span>Submitted: <span className="text-slate-700">{new Date(complaint.createdAt).toLocaleString()}</span></span>
+                {complaint.slaDeadline && (
+                  <span className="flex items-center gap-1.5">
+                    SLA:
+                    <SlaCountdown
+                      slaDeadline={complaint.slaDeadline}
+                      resolvedAt={complaint.resolvedAt}
+                    />
+                  </span>
+                )}
               </div>
             </div>
 

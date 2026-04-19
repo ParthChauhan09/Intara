@@ -7,6 +7,7 @@ create table if not exists public.complaints (
   recommendation text[],
   status text not null default 'OPEN' check (status in ('OPEN', 'PENDING', 'REVIEWED', 'ESCALATED', 'CLOSED')),
   sla_deadline timestamptz,
+  resolved_at timestamptz,
   created_at timestamptz not null default now()
 );
 
@@ -64,3 +65,7 @@ create index if not exists complaints_created_at_idx on public.complaints (creat
 
 grant select, insert, update, delete on table public.complaints to authenticated;
 grant all on table public.complaints to service_role;
+
+-- Migration: add resolved_at column if it doesn't exist
+alter table public.complaints add column if not exists resolved_at timestamptz;
+create index if not exists complaints_resolved_at_idx on public.complaints (resolved_at);

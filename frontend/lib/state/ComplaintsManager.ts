@@ -14,6 +14,7 @@ export type Complaint = {
   recommendation?: string[];
   status: ComplaintStatus;
   slaDeadline: string | null;
+  resolvedAt: string | null;
   createdAt: string;
 };
 

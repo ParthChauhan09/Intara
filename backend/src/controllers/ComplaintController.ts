@@ -1,6 +1,6 @@
 import type { Request, Response } from "express";
 import { createSupabaseUserClient } from "../supabase.ts";
-import { Category, Priority, isComplaintCategory, isComplaintPriority, isComplaintStatus, type ComplaintStatus, type ComplaintCategory, type ComplaintPriority } from "../models/Complaint.ts";
+import { Category, Priority, Status, isComplaintCategory, isComplaintPriority, isComplaintStatus, type ComplaintStatus, type ComplaintCategory, type ComplaintPriority } from "../models/Complaint.ts";
 import type { ErrorWithCause } from "../types/types.ts";
 import { ComplaintAIService } from "../services/ai/ComplaintAIService.ts";
 import fs from "node:fs";
@@ -21,11 +21,11 @@ type UpdateComplaintStatusBody = {
 };
 
 const complaintSelectAdmin =
-  "id,userId:user_id,description,category,priority,recommendation,status,slaDeadline:sla_deadline,createdAt:created_at";
+  "id,userId:user_id,description,category,priority,recommendation,status,slaDeadline:sla_deadline,resolvedAt:resolved_at,createdAt:created_at";
 
 // Regular users do not see category, priority, or recommendation
 const complaintSelectUser =
-  "id,userId:user_id,description,status,slaDeadline:sla_deadline,createdAt:created_at";
+  "id,userId:user_id,description,status,slaDeadline:sla_deadline,resolvedAt:resolved_at,createdAt:created_at";
 
 export class ComplaintController {
   private constructor() {}
@@ -103,6 +103,9 @@ export class ComplaintController {
       console.error("AI service error:", err);
     }
 
+    const slaHours = finalPriority === Priority.High ? 12 : finalPriority === Priority.Medium ? 24 : 48;
+    const computedSlaDeadline = new Date(Date.now() + slaHours * 60 * 60 * 1000).toISOString();
+
     try {
       const supabase = createSupabaseUserClient(req.accessToken);
       const { data, error } = await supabase
@@ -113,7 +116,7 @@ export class ComplaintController {
           category: finalCategory,
           priority: finalPriority,
           recommendation,
-          sla_deadline: slaDeadline ?? null
+          sla_deadline: slaDeadline ?? computedSlaDeadline
         })
         .select(complaintSelectUser)
         .single();
@@ -167,6 +170,9 @@ export class ComplaintController {
         console.error("AI service error:", err);
       }
 
+      const slaHours = finalPriority === Priority.High ? 12 : finalPriority === Priority.Medium ? 24 : 48;
+      const computedSlaDeadline = new Date(Date.now() + slaHours * 60 * 60 * 1000).toISOString();
+
       const supabase = createSupabaseUserClient(req.accessToken);
       const { data, error } = await supabase
         .from("complaints")
@@ -176,7 +182,7 @@ export class ComplaintController {
           category: finalCategory,
           priority: finalPriority,
           recommendation,
-          sla_deadline: null
+          sla_deadline: computedSlaDeadline
         })
         .select(complaintSelectUser)
         .single();
@@ -203,6 +209,9 @@ export class ComplaintController {
     }
 
     const patch: Record<string, unknown> = { status };
+    if (status === Status.CLOSED) {
+      patch.resolved_at = new Date().toISOString();
+    }
     if ("recommendation" in (req.body || {})) {
       patch.recommendation = req.body.recommendation ?? null;
     }

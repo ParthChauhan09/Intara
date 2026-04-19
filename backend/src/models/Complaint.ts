@@ -46,6 +46,7 @@ export type AppComplaint = {
   recommendation: string[] | null;
   status: ComplaintStatus;
   slaDeadline: string | null;
+  resolvedAt: string | null;
   createdAt: string;
 };
 
@@ -62,6 +63,7 @@ export function isAppComplaint(value: unknown): value is AppComplaint {
     (record.recommendation === null || Array.isArray(record.recommendation)) &&
     isComplaintStatus(record.status) &&
     (record.slaDeadline === null || typeof record.slaDeadline === "string") &&
+    (record.resolvedAt === null || typeof record.resolvedAt === "string") &&
     typeof record.createdAt === "string"
   );
 }

@@ -13,6 +13,7 @@ import { apiEndPointMap } from "@/lib/apiEndPointMap";
 import { StatusBadge } from "@/components/complaints/StatusBadge";
 import { PriorityBadge } from "@/components/complaints/PriorityBadge";
 import { CategoryBadge } from "@/components/complaints/CategoryBadge";
+import { SlaCountdown } from "@/components/complaints/SlaCountdown";
 import type { Complaint } from "@/lib/state/ComplaintsManager";
 
 type StatItem = { name: string; value: number };
@@ -133,6 +134,9 @@ function OperatorDashboard() {
                           {c.category && <CategoryBadge category={c.category} />}
                           {c.priority && <PriorityBadge priority={c.priority} />}
                           <StatusBadge status={c.status} />
+                          {c.status !== "CLOSED" && (
+                            <SlaCountdown slaDeadline={c.slaDeadline} resolvedAt={c.resolvedAt} />
+                          )}
                         </div>
                         <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="text-slate-300 group-hover:text-slate-500 flex-shrink-0 transition-colors"><polyline points="9 18 15 12 9 6"/></svg>
                       </div>
