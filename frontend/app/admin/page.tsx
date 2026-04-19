@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useState, useMemo } from "react";
 import { useProtectedRoute } from "@/lib/useProtectedRoute";
 import { observer } from "mobx-react-lite";
 import { FullPageLoader } from "@/components/FullPageLoader";
@@ -23,6 +23,43 @@ type DashboardStats = {
 
 const COLORS = ["#0F172A", "#334155", "#64748B", "#94A3B8", "#CBD5E1"];
 
+const CATEGORIES = ["All", "Product", "Packaging", "Trade", "Invalid"];
+const PRIORITIES  = ["All", "High", "Medium", "Low"];
+
+function FilterBar({
+  label,
+  options,
+  value,
+  onChange,
+}: {
+  label: string;
+  options: string[];
+  value: string;
+  onChange: (v: string) => void;
+}) {
+  return (
+    <div className="flex items-center gap-2">
+      <span className="text-xs font-semibold uppercase tracking-wider text-slate-400">{label}</span>
+      <div className="flex bg-slate-100 p-1 rounded-xl gap-0.5">
+        {options.map((opt) => (
+          <button
+            key={opt}
+            type="button"
+            onClick={() => onChange(opt)}
+            className={`px-3 py-1.5 rounded-lg text-xs font-medium transition-colors ${
+              value === opt
+                ? "bg-slate-950 text-white shadow-sm"
+                : "text-slate-500 hover:text-slate-800 hover:bg-slate-200"
+            }`}
+          >
+            {opt}
+          </button>
+        ))}
+      </div>
+    </div>
+  );
+}
+
 function AdminDashboard() {
   const { auth } = useMainContext();
   const { isReady, isAllowed } = useProtectedRoute("/sign-in", true);
@@ -30,6 +67,8 @@ function AdminDashboard() {
   const [stats, setStats] = useState<DashboardStats | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
+  const [categoryFilter, setCategoryFilter] = useState("All");
+  const [priorityFilter, setPriorityFilter] = useState("All");
 
   useEffect(() => {
     if (!auth.accessToken) return;
@@ -52,6 +91,15 @@ function AdminDashboard() {
         setLoading(false);
       });
   }, [auth.accessToken]);
+
+  const filteredComplaints = useMemo(() => {
+    if (!stats) return [];
+    return stats.complaints.filter((c) => {
+      const catMatch = categoryFilter === "All" || c.category === categoryFilter;
+      const priMatch = priorityFilter === "All" || c.priority === priorityFilter;
+      return catMatch && priMatch;
+    });
+  }, [stats, categoryFilter, priorityFilter]);
 
   const handleUpdateStatus = (id: string, status: string) => {
     if (!auth.accessToken || !stats) return;
@@ -94,7 +142,7 @@ function AdminDashboard() {
           paddingAngle={2}
           dataKey="value"
         >
-          {data.map((entry, index) => (
+          {data.map((_, index) => (
             <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
           ))}
         </Pie>
@@ -167,7 +215,7 @@ function AdminDashboard() {
                           <YAxis allowDecimals={false} axisLine={false} tickLine={false} tick={{fill: '#64748B'}} dx={-10} />
                           <Tooltip cursor={{fill: '#F8FAFC'}} contentStyle={{borderRadius: '1rem', border: 'none', boxShadow: '0 20px 50px -30px rgba(15,23,42,0.35)'}} />
                           <Bar dataKey="value" fill="#0F172A" radius={[8, 8, 0, 0]} maxBarSize={60}>
-                            {stats.statusStats.map((entry, index) => (
+                            {stats.statusStats.map((_, index) => (
                               <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
                             ))}
                           </Bar>
@@ -182,7 +230,33 @@ function AdminDashboard() {
             </div>
 
             <div className="mt-12">
-              <ComplaintList complaints={stats.complaints} isAdmin={true} onUpdateStatus={handleUpdateStatus} />
+              <div className="flex flex-wrap items-center gap-4 mb-6">
+                <FilterBar
+                  label="Category"
+                  options={CATEGORIES}
+                  value={categoryFilter}
+                  onChange={setCategoryFilter}
+                />
+                <FilterBar
+                  label="Priority"
+                  options={PRIORITIES}
+                  value={priorityFilter}
+                  onChange={setPriorityFilter}
+                />
+                {(categoryFilter !== "All" || priorityFilter !== "All") && (
+                  <button
+                    type="button"
+                    onClick={() => { setCategoryFilter("All"); setPriorityFilter("All"); }}
+                    className="text-xs font-medium text-slate-400 hover:text-slate-700 transition-colors"
+                  >
+                    Clear filters
+                  </button>
+                )}
+                <span className="ml-auto text-xs text-slate-400">
+                  {filteredComplaints.length} of {stats.complaints.length} complaints
+                </span>
+              </div>
+              <ComplaintList complaints={filteredComplaints} isAdmin={true} onUpdateStatus={handleUpdateStatus} />
             </div>
           </>
         )}
