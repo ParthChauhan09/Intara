@@ -12,9 +12,7 @@ export function HeroSection() {
         routed to the right team.{"\""}
       </blockquote>
       <p className="mx-auto mt-5 max-w-2xl text-base leading-7 text-slate-600">
-        Keep the front end simple for now. The backend can classify,
-        prioritize, and route complaints after this intake screen collects
-        the right details.
+        Share your concern in one place, and we&apos;ll make sure it reaches the right team.
       </p>
     </Card>
   );
